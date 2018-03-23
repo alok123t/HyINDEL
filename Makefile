@@ -10,7 +10,7 @@ LIBS=-lbamtools -ltbb
 all: indel
 
 indel:
-	$(CC) $(CFLAGS) -I$(IDIR) -L$(LDIR) Cluster.cpp -o indel $(LIBS)
+	$(CC) $(CFLAGS) -I$(IDIR) -L$(LDIR) src/Cluster.cpp -o indel $(LIBS)
 
 clean:
 	rm indel
