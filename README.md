@@ -5,7 +5,7 @@
 * [Intel TBB](https://github.com/01org/tbb/releases)
 
 ## Installation
-`g++ -I /path/bamtools-master/include/ Cluster.cpp -L /path/bamtools-master/lib/ -lbamtools -std=c++11 -o Cluster -w`
+Run `make`
 
 ## Usage
 `./Cluster <input BAM> <insert size> <std dev> > <output file>`
