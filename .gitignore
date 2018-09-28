@@ -1,0 +1,6 @@
+# CMake build
+build/
+# Mac ignores
+.DS_Store
+# VS code
+.vscode/

@@ -1,4 +1,12 @@
-#include <bits/stdc++.h>
+#include <cmath>
+#include <iomanip>
+#include <iostream>
+#include <algorithm>
+#include <set>
+#include <vector>
+#include <chrono>
+// args api
+#include "args.hxx"
 //bamtools api
 #include "api/BamMultiReader.h"
 #include "api/BamWriter.h"
@@ -9,7 +17,7 @@ using namespace BamTools;
 int Mean, StdDev;
 
 int minSCLen = 10, bpTol = 5, maxSc = 20;
-int maxCluster = 20;
+int maxCluster = 50;
 
 int matchScore = 2, mismatchScore = -1, gapPenalty = 1;
 double overlap = 0.95;
@@ -539,7 +547,6 @@ void CreateNodes(Range r, BamReader &br) {
 	string seq, seqQual, scSeq, nscSeq;
 	BamAlignment aln;
 	vector <int> clipSizes, readPositions, genomePositions;
-
 	for(int bp = 0; bp <= 1; bp++) {
 		if(bp == 0) {
 			refID = r.refID1;start = r.start1 - 1;end = r.end1 + 1;
@@ -551,7 +558,7 @@ void CreateNodes(Range r, BamReader &br) {
 		}
 
 		br.SetRegion(refID, start, refID, end);
-		//cout << "Nodes range : " << start << ' ' << end << endl;
+		// cout << "Nodes range : " << start << ' ' << end << endl;
 		while(br.GetNextAlignmentCore(aln)) {
 			clipSizes.clear();readPositions.clear();genomePositions.clear();
 
@@ -631,7 +638,7 @@ void CreateNodes(Range r, BamReader &br) {
 pair < int, int > Median(vector < int > v) {
 	if(v.size() > 0) {
 		vector < int > v_org(v);
-		sort(v.begin(), v.end());
+		std::sort(v.begin(), v.end());
 		int mid = v.size()/2;
 		int median = v[mid];
 
@@ -690,18 +697,20 @@ void ClustersParse() {
 
 void DelsParse(BamReader &br) {
 	set < int > sl_dels;
-	auto prv = chrono::steady_clock::now();
+	auto prv = std::chrono::steady_clock::now();
 	cerr << "Size SV Ranges : " << dels_large.size() << endl;
 	int co = 0, edges_co = 0;
 	for(int i = 0; i < dels_large.size(); i++) {
 		Range cur = dels_large[i];
 		if(IsValid(cur)) {
 			co++;
-			//cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
+			// cerr << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
 			co5 = co3 = 0;isIns = true;
 			nodes.clear();clusters.clear();pred.clear();info.clear();
 
 			CreateNodes(cur, br);
+
+			// cout << nodes.size() << endl;
 
 			if(CreateLinks()) edges_co++;
 
@@ -733,8 +742,8 @@ void DelsParse(BamReader &br) {
 		int percentDone = (((i+1)*100/dels_large.size())/5)*5;
 		if(percentDone != 0 && percentDone%5 == 0 && sl_dels.find(percentDone) == sl_dels.end()) {
 			sl_dels.insert(percentDone);
-			auto cur = chrono::steady_clock::now();
-			cerr << percentDone << "%\r" << std::flush;// << ' ' << setprecision(1) << (chrono::duration_cast<chrono::minutes>(cur - prv).count()) << endl;
+			auto cur = std::chrono::steady_clock::now();
+			cerr << percentDone << "%\r" << std::flush;// << ' ' << setprecision(1) << (std::chrono::duration_cast<std::chrono::minutes>(cur - prv).count()) << endl;
 			prv = cur;
 		}
 	}
@@ -819,36 +828,67 @@ void Output() {
 
 int main(int argc, char const *argv[]) {
 
-	if(argc != 4) {
-		cout << "Incorrect arguments" << endl;
-		return 0;
-	}
+	args::ArgumentParser parser("This program identifies insertions and deletions in NGS data");
+    args::HelpFlag help(parser, "help", "Help menu", {'h', "help"});
+
+    args::Group groupInsertSize(parser, "Insert size parameters", args::Group::Validators::AllOrNone);
+    args::ValueFlag<int> insSz(groupInsertSize, "insSz", "Insert Size", {'s', "insSz"});
+    args::ValueFlag<int> stdDev(groupInsertSize, "stdDev", "Standard Deviation", {'d', "stdDev"});
+
+    args::Group groupInputFile(parser, "Input file name", args::Group::Validators::All);
+    args::ValueFlag<std::string> inpFileName(groupInputFile, "inpFile", "Input FileName", {'i', "inFile"});
+
+    args::Group groupOutputFile(parser, "Output file name", args::Group::Validators::AllOrNone);
+    args::ValueFlag<std::string> outFileName(groupOutputFile, "outFile", "Output FileName", {'o', "outFile"});
+    
+    try {
+        parser.ParseCLI(argc, argv);
+    }
+    catch (args::Help) {
+        std::cout << parser;
+        return EXIT_SUCCESS;
+    }
+    catch (args::ParseError e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return EXIT_FAILURE;
+    }
+    catch (args::ValidationError e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return EXIT_FAILURE;
+    }
+
+    if (insSz) std::cout << "Insert size: " << args::get(insSz) << std::endl;
+    if (stdDev) std::cout << "Standard deviation: " << args::get(stdDev) << std::endl;
+    
+	if (inpFileName) std::cout << "Input file: " << args::get(inpFileName) << std::endl;
 
 	BamReader br;
 
-	Input(argv[1], br);
-	Mean = atoi(argv[2]);
-	StdDev = atoi(argv[3]);
+	Mean = args::get(insSz);
+	StdDev = args::get(stdDev);
+	Input(args::get(inpFileName), br);
 
-	auto start_t1 = chrono::steady_clock::now();
+	auto start_t1 = std::chrono::steady_clock::now();
 
 	Init();
 
 	ProcessBam(br);
 
-	auto end_t1 = chrono::steady_clock::now();
-	cerr << "Step 1 : Done (" << setprecision(1) << (chrono::duration_cast<chrono::minutes>(end_t1 - start_t1).count()) << " mins)" << endl;
+	auto end_t1 = std::chrono::steady_clock::now();
+	cerr << "Step 1 : Done (" << setprecision(1) << (std::chrono::duration_cast<std::chrono::minutes>(end_t1 - start_t1).count()) << " mins)" << endl;
 
-	auto start_t2 = chrono::steady_clock::now();
+	auto start_t2 = std::chrono::steady_clock::now();
 
 	DelsParse(br);
 
-	auto end_t2 = chrono::steady_clock::now();
-	cerr << "Step 2 : Done (" << setprecision(1) << (chrono::duration_cast<chrono::minutes>(end_t2 - start_t2).count()) << " mins)" << endl;
+	auto end_t2 = std::chrono::steady_clock::now();
+	cerr << "Step 2 : Done (" << setprecision(1) << (std::chrono::duration_cast<std::chrono::minutes>(end_t2 - start_t2).count()) << " mins)" << endl;
 
 	br.Close();
 
 	Output();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
