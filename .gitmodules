@@ -1,0 +1,12 @@
+[submodule "external/args"]
+	path = external/args
+	url = https://github.com/Taywee/args.git
+    ignore = dirty
+[submodule "external/bamtools"]
+	path = external/bamtools
+	url = https://github.com/pezmaster31/bamtools.git
+    ignore = dirty
+[submodule "external/cpp-taskflow"]
+	path = external/cpp-taskflow
+	url = https://github.com/cpp-taskflow/cpp-taskflow.git
+    ignore = dirty
