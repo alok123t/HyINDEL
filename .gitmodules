@@ -6,7 +6,6 @@
 	path = external/bamtools
 	url = https://github.com/pezmaster31/bamtools.git
     ignore = dirty
-[submodule "external/transwarp"]
+[submodule "transwarp"]
 	path = external/transwarp
 	url = https://github.com/bloomen/transwarp.git
-    ignore = dirty
