@@ -1,7 +1,7 @@
 # indel-detect
 
 [![Cpp Standard](https://img.shields.io/badge/C%2B%2B-11-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B11)
-
+[![Build Status](https://travis-ci.org/alok123t/indel-detect.svg?branch=master)](https://travis-ci.org/alok123t/indel-detect)
 ## Requirements
 * [CMake](https://cmake.org/download/)
 
