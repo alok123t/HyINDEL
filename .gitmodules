@@ -6,7 +6,7 @@
 	path = external/bamtools
 	url = https://github.com/pezmaster31/bamtools.git
     ignore = dirty
-[submodule "external/cpp-taskflow"]
-	path = external/cpp-taskflow
-	url = https://github.com/cpp-taskflow/cpp-taskflow.git
+[submodule "external/transwarp"]
+	path = external/transwarp
+	url = https://github.com/bloomen/transwarp.git
     ignore = dirty
