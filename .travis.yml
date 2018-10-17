@@ -1,0 +1,18 @@
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-4.9']
+      env: COMPILER=g++-4.9
+    - os: osx
+      compiler: clang
+      env: COMPILER=clang++
+
+script:
+    - mkdir build && cd build
+    - cmake 
+    - make
