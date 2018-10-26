@@ -7,7 +7,7 @@
 #include <chrono>
 // args api
 #include "args.hxx"
-//bamtools api
+// bamtools api
 #include "api/BamMultiReader.h"
 #include "api/BamWriter.h"
 
@@ -17,10 +17,11 @@ using namespace BamTools;
 int Mean, StdDev;
 
 int minSCLen = 10, bpTol = 5, maxSc = 20;
-int maxCluster = 50;
+int maxCluster = 10;
 
-int matchScore = 2, mismatchScore = -1, gapPenalty = 1;
-double overlap = 0.95;
+// TODO: Change to 1 and check, do more analysis on what overlap criteria should be
+int matchScore = 2, mismatchScore = -2, gapPenalty = -2;
+double overlap = 0.8;
 
 int qualOffset = 33, minScQual = 10;
 map < char, int > qual2phred;
@@ -30,12 +31,14 @@ struct Range {
 	bool isPlus1, isPlus2, isMinus1, isMinus2, isSC1, isSC2, isShort;
 };
 
+// TODO: Remove readName
 struct Node {
 	string readName, seq, scSeq, nscSeq;
 	int start, end, len, scLen, scPos;
 	bool at5, scAt5, ins;
 };
 
+// TODO: Refactor struct into class, first have a constructor
 struct Cluster {
 	vector < Node > n_up, n_down;
 };
@@ -389,7 +392,6 @@ void ProcessBam(BamReader &br) {
 }
 
 bool Align(string s1, string s2) {
-	//cout << s1 << ' ' << s2 << ' ';
 	int rows = s1.size() + 1;
     int cols = s2.size() + 1;
 
@@ -409,7 +411,9 @@ bool Align(string s1, string s2) {
 	}
 
 	int min_len = min(s1.size(), s2.size());
-	if(max_score/2.0 >= overlap*min_len) return true;
+	if(max_score/2.0 >= overlap*min_len) {
+		return true;
+	}
 	else return false;
 }
 
@@ -418,13 +422,15 @@ bool Match(Node n1, Node n2) {
 	int scDist;
 	string interSC1, interSC2;
 
+	if (n1.readName != n2.readName && n1.start == n2.start) return false;
+
 	//Same SC pos req
 	//if(n1.start != n2.start) return false;
 
 	here = here1 = here2 = here3 = false;
 
 	//both reads at same end, sc at 3' end for 5' reads and vice versa
-	if(n1.at5 == n2.at5 && abs(n1.scPos - n2.scPos) <= bpTol
+	if(n1.at5 == n2.at5 && n1.at5 != n1.scAt5 && n2.at5 != n2.scAt5 && abs(n1.scPos - n2.scPos) <= bpTol
 		&& n1.at5 != n1.scAt5 && n2.at5 != n2.scAt5
 		) {
 		here = Align(n1.scSeq, n2.scSeq);
@@ -481,11 +487,23 @@ bool Check(Node x, Cluster c) {
 }
 
 bool CreateLinks() {
-	// if(co5 >= 1 && co3 >= 1) return true;
-	// else return false;
-
 	if(co5 == 0 || co3 == 0) return false;
+	if (nodes.size() == 0) return false;
+	int add_co = 0;
+	
+	bool ret = false;
+	// for (int i = 0; i < nodes.size(); i++) {
+	// 	for (int j = i+1; j < nodes.size(); j++) {
+	// 		if (Match(nodes[i], nodes[j])) {
+	// 			add_co++;
+	// 			ret = true;
+	// 		}
+	// 	}
+	// }
+	// // cerr << "Vertices: " << nodes.size() << ' ' << add_co << '\n';
+	// return ret;
 
+	
 	int found;
 	for(int i = 0; i < nodes.size(); i++) {
 		found = -1;
@@ -494,6 +512,11 @@ bool CreateLinks() {
 				found = j;
 				if(nodes[i].at5) clusters[j].n_up.push_back(nodes[i]);
 				else clusters[j].n_down.push_back(nodes[i]);
+
+				if (clusters[j].n_up.size() && clusters[j].n_down.size()) {
+					ret = true;
+				}
+
 				break;
 			}
 		}
@@ -504,7 +527,7 @@ bool CreateLinks() {
 			clusters.push_back(tmp);
 		}
 	}
-	return true;
+	return ret;
 }
 
 int getDelSize(BamAlignment aln) {
@@ -541,13 +564,16 @@ int trimSeq(string &scSeq, string &scQual, bool scAt5) {
 }
 
 void CreateNodes(Range r, BamReader &br) {
+	int prvNodesSz = 0;
 	int refID, start, end;
 	int scIdx, scLen, seqLen;
 	bool at5, hasSC, scAt5;
 	string seq, seqQual, scSeq, nscSeq;
 	BamAlignment aln;
 	vector <int> clipSizes, readPositions, genomePositions;
+	// refactor, remove for loop, have up_nodes, down_nodes
 	for(int bp = 0; bp <= 1; bp++) {
+		int totNewSC = 0;
 		if(bp == 0) {
 			refID = r.refID1;start = r.start1 - 1;end = r.end1 + 1;
 			at5 = true;
@@ -572,6 +598,7 @@ void CreateNodes(Range r, BamReader &br) {
 			}
 
 			scLen = clipSizes[scIdx];
+			// remove if to continue
 			if(scLen >= minSCLen && genomePositions[scIdx] >= start && genomePositions[scIdx] <= end) {
 
 				aln.BuildCharData();
@@ -605,13 +632,22 @@ void CreateNodes(Range r, BamReader &br) {
 					//cout << "en2" << endl;
 				}
 
+				int addNewSC = 1;
 				int scCo = 0;
-				for(int i = 0; i < nodes.size(); i++) {
+				for(int i = 0; i < nodes.size() && scCo <= maxSc; i++) {
 					Node x = nodes[i];
 					if(scAt5 == x.scAt5 && abs(genomePositions[scIdx] - x.scPos) <= bpTol) {
 						scCo++;
+						addNewSC = 0;
 					}
 				}
+				totNewSC += addNewSC;
+				if(totNewSC > maxCluster) {
+					// cerr << co5 << ' ' << co3 << " reset\n";
+					nodes.clear();
+					return;
+				}
+				// cerr << scCo << '\n';
 				if(scCo <= maxSc) {
 					if(at5) co5++;
 					else co3++;
@@ -627,12 +663,9 @@ void CreateNodes(Range r, BamReader &br) {
 				}
 			}
 		}
-		if(nodes.size() >= maxCluster) {
-			nodes.clear();
-			return;
-		}
 		//cout << "End" << endl;
 	}
+	// cerr << co5 << ' ' << co3 << '\n';
 }
 
 pair < int, int > Median(vector < int > v) {
@@ -701,6 +734,7 @@ void DelsParse(BamReader &br) {
 	cerr << "Size SV Ranges : " << dels_large.size() << endl;
 	int co = 0, edges_co = 0;
 	for(int i = 0; i < dels_large.size(); i++) {
+		// if ( i > 10 ) break;
 		Range cur = dels_large[i];
 		if(IsValid(cur)) {
 			co++;
@@ -708,11 +742,17 @@ void DelsParse(BamReader &br) {
 			co5 = co3 = 0;isIns = true;
 			nodes.clear();clusters.clear();pred.clear();info.clear();
 
+			// cerr << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ';
+
 			CreateNodes(cur, br);
 
-			// cout << nodes.size() << endl;
+			if(CreateLinks()) {
+				// cerr << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << '\n';
+				edges_co++;
+			}
 
-			if(CreateLinks()) edges_co++;
+			// for (int cl = 0; cl < clusters.size(); cl++) cerr << "{" << clusters[cl].n_up.size() << ',' << clusters[cl].n_down.size() << "} ";
+			// cerr << '\n';
 
 			ClustersParse();
 
@@ -736,20 +776,18 @@ void DelsParse(BamReader &br) {
 				pred_dels_large.push_back(pred);
 			}
 		}
-		else {
-			//cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
-		}
+		// else {
+		// 	//cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
+		// }
 		int percentDone = (((i+1)*100/dels_large.size())/5)*5;
 		if(percentDone != 0 && percentDone%5 == 0 && sl_dels.find(percentDone) == sl_dels.end()) {
 			sl_dels.insert(percentDone);
 			auto cur = std::chrono::steady_clock::now();
-			cerr << percentDone << "%\r" << std::flush;// << ' ' << setprecision(1) << (std::chrono::duration_cast<std::chrono::minutes>(cur - prv).count()) << endl;
+			// cerr << percentDone << "%\r" << std::flush;// << ' ' << setprecision(1) << (std::chrono::duration_cast<std::chrono::minutes>(cur - prv).count()) << endl;
 			prv = cur;
 		}
 	}
-	cerr << endl;
-
-	cerr << "Valid Deletions Count : " << co << '\n';
+	cerr << "Valid: " << co << '\n';
 	cerr << "Edges built : " << edges_co << '\n';
 	// cerr << "SVOutput count : " << svout_co << '\n';
 	// cerr << "Edges failed count : " << fedg_co << '\n';
