@@ -1,11 +1,15 @@
+import os
 
-f1 = open('/Users/alok/Desktop/chr19_291_10.txt')
-f2 = open('/Users/alok/Documents/GitHub/indel-detect/scripts/dgv.bed')
-done = ['chr19']
+# f1 = open('/Users/alok/tmp/my_del')
+f1 = open('/Users/alok/tmp/1')
+f2 = open('/Users/alok/Tools/indel-detect/scripts/dgv.bed')
+done = ['chr1']
 # done = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22', 'chrX']
 
 def mod(x):
     if x.find('chrchr') != -1:
+        return x[6:]
+    elif x.find('chr') != -1:
         return x[3:]
     else:
         return x
@@ -51,6 +55,8 @@ found = [0]*len(res)
 pred = 0
 for line in f1:
     l = line.split()
+    if len(l) < 7:
+        continue
     if l[0] == 'Chromosome':
         continue
     if int(l[3]) > 10000 or int(l[3]) < 200:
@@ -67,6 +73,12 @@ for line in f1:
         #no break?
 print('Found : ' + str(found.count(1)))
 print('Total predictions : ' + str(pred))
+for i in range(len(res)):
+    x = res[i][0]
+    y = res[i][1]
+    cmd = "samtools depth -aa -r 1:" + str(x) + "-" + str(y) + " /Users/alok/Data/30x/chr1.bam     | awk '{ sum += $3; n++} END { if (n > 0) print sum/n; }'"
+    print (found[i], end=' ', flush=True)
+    os.system(cmd)
 # for i in range(len(found)):
 #     if found[i] > 1:
 #         print(res[i])
