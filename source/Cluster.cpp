@@ -1,21 +1,26 @@
+// TODO: Part of sub hpp
 #include <cmath>
 #include <iomanip>
-#include <iostream>
 #include <algorithm>
 #include <set>
 #include <vector>
 #include <chrono>
-// args api
-#include "args.hxx"
+
+// TODO: Part of sub hpp
 // bamtools api
 #include "api/BamMultiReader.h"
 #include "api/BamWriter.h"
 
+#include "ArgsParser.hpp"
+
+// TODO: Remove namespaces
 using namespace std;
 using namespace BamTools;
 
+// TODO: Remove global vars
 int Mean, StdDev;
 
+// TODO: Part of sub hpp
 int minSCLen = 10, bpTol = 5, maxSc = 20;
 int maxCluster = 10;
 
@@ -866,62 +871,37 @@ void Output() {
 
 int main(int argc, char const *argv[]) {
 
-	args::ArgumentParser parser("This program identifies insertions and deletions in NGS data");
-    args::HelpFlag help(parser, "help", "Help menu", {'h', "help"});
+	InputParams ip;
+	
+	if (!parseInput(argc, argv, &ip)) return EXIT_FAILURE;
 
-    args::Group groupInsertSize(parser, "Insert size parameters", args::Group::Validators::AllOrNone);
-    args::ValueFlag<int> insSz(groupInsertSize, "insSz", "Insert Size", {'s', "insSz"});
-    args::ValueFlag<int> stdDev(groupInsertSize, "stdDev", "Standard Deviation", {'d', "stdDev"});
-
-    args::Group groupInputFile(parser, "Input file name", args::Group::Validators::All);
-    args::ValueFlag<std::string> inpFileName(groupInputFile, "inpFile", "Input FileName", {'i', "inFile"});
-
-    args::Group groupOutputFile(parser, "Output file name", args::Group::Validators::AllOrNone);
-    args::ValueFlag<std::string> outFileName(groupOutputFile, "outFile", "Output FileName", {'o', "outFile"});
-    
-    try {
-        parser.ParseCLI(argc, argv);
-    }
-    catch (args::Help) {
-        std::cout << parser;
-        return EXIT_SUCCESS;
-    }
-    catch (args::ParseError e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        return EXIT_FAILURE;
-    }
-    catch (args::ValidationError e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        return EXIT_FAILURE;
-    }
-
-    if (insSz) std::cout << "Insert size: " << args::get(insSz) << std::endl;
-    if (stdDev) std::cout << "Standard deviation: " << args::get(stdDev) << std::endl;
-    
-	if (inpFileName) std::cout << "Input file: " << args::get(inpFileName) << std::endl;
+	if (ip.verbose) {
+		std::cerr << "Insert size: " << ip.insSz << std::endl;
+		std::cerr << "Standard deviation: " << ip.stdDev << std::endl;
+		std::cerr << "Input file: " << ip.filePaths.front() << std::endl;
+	}
 
 	BamReader br;
 
-	Mean = args::get(insSz);
-	StdDev = args::get(stdDev);
-	Input(args::get(inpFileName), br);
+	Mean = ip.insSz;
+	StdDev = ip.stdDev;
+	std::string inputFile = ip.filePaths.front();
+	Input(inputFile, br);
 
-	auto start_t1 = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point start_t1 = std::chrono::steady_clock::now();
 
 	Init();
 
 	ProcessBam(br);
 
-	auto end_t1 = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point end_t1 = std::chrono::steady_clock::now();
 	cerr << "Step 1 : Done (" << setprecision(1) << (std::chrono::duration_cast<std::chrono::minutes>(end_t1 - start_t1).count()) << " mins)" << endl;
 
-	auto start_t2 = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point start_t2 = std::chrono::steady_clock::now();
 
 	DelsParse(br);
 
-	auto end_t2 = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point end_t2 = std::chrono::steady_clock::now();
 	cerr << "Step 2 : Done (" << setprecision(1) << (std::chrono::duration_cast<std::chrono::minutes>(end_t2 - start_t2).count()) << " mins)" << endl;
 
 	br.Close();

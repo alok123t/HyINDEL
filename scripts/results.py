@@ -1,6 +1,8 @@
 import subprocess
 
 FLAG_SVCLASSIFY = True
+FLAG_COV = True
+FLAG_50 = True
 
 # Reciprocal overlap
 RO = 0.5
@@ -69,9 +71,10 @@ def parse():
     else:
         ref = open('/Users/alok/Tools/indel-detect/scripts/dgv.txt')
     
-    inp = open('/Users/alok/tmp/my_del')
+# inp = open('/Users/alok/tmp/my_del')
     # inp = open('/Users/alok/Data/30x/SoftSV_19/deletions.txt')
-
+# inp = open('/Users/alok/tmp/softsv_19/deletions_small.txt')
+    inp = open('/Users/alok/tmp/softsv_19/all_dels.txt')
     ref_list = []
     num_pred = 0
 
@@ -95,8 +98,12 @@ def parse():
         inp_en = int(inp_l[2])
         here_list = [inp_chr, inp_st, inp_en]
         
-        if not checkCoverage(here_list):
-            continue
+        if FLAG_50:
+            if inp_en - inp_st + 1 < 50:
+                continue
+        if FLAG_COV:
+            if not checkCoverage(here_list):
+                continue
 
         num_pred += 1
         
