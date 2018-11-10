@@ -1,7 +1,10 @@
 #ifndef MISC_HPP
 #define MISC_HPP
 
+#include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <iomanip>
 #include <map>
 #include <set>
 #include <string>
