@@ -8,5 +8,4 @@ include_directories( "${CMAKE_SOURCE_DIR}/source" )
 include_directories( "${CMAKE_SOURCE_DIR}/external/args" )
 
 add_executable( TestArgsParser ${SOURCES} )
-
-add_test(NAME ArgsParser COMMAND TestArgsParser )
+add_test( NAME ArgsParser COMMAND TestArgsParser )

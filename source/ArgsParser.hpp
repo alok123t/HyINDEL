@@ -1,25 +1,28 @@
 #ifndef ARGSPARSER_HPP
 #define ARGSPARSER_HPP
 
-// args api
-#include "args.hxx"
-
+#include <algorithm>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <vector>
 #include <dirent.h>
 
-struct InputParams
+// args api
+#include "args.hxx"
+
+struct ArgsParams
 {
-    InputParams(): verbose(true) {}
+    ArgsParams(): threads((int)std::thread::hardware_concurrency()), verbose(true) {}
     int insSz;
     int stdDev;
     std::vector<std::string> filePaths;
+    unsigned int threads;
     bool verbose;
 };
 
 void splitFilePaths(const std::string mergedFileNames, std::vector<std::string> &filePaths);
 
-bool parseInput(int argc, char const *argv[], struct InputParams *ip);
+bool parseArgs(int argc, char const *argv[], struct ArgsParams *ip);
 
 #endif // ARGSPARSER_HPP

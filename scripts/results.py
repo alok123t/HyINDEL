@@ -1,6 +1,6 @@
 import subprocess
 
-FLAG_SVCLASSIFY = True
+FLAG_SVCLASSIFY = False
 FLAG_COV = True
 FLAG_50 = True
 
@@ -69,12 +69,12 @@ def parse():
     if FLAG_SVCLASSIFY:
         ref = open('/Users/alok/Tools/indel-detect/scripts/svclassify.txt')
     else:
-        ref = open('/Users/alok/Tools/indel-detect/scripts/dgv.txt')
-    
+# ref = open('/Users/alok/Tools/indel-detect/scripts/dgv.txt')
+        ref = open('/Users/alok/Downloads/dgv/dgv-dels-gs.txt')
 # inp = open('/Users/alok/tmp/my_del')
-    # inp = open('/Users/alok/Data/30x/SoftSV_19/deletions.txt')
+    inp = open('/Users/alok/Data/30x/SoftSV_19/deletions.txt')
 # inp = open('/Users/alok/tmp/softsv_19/deletions_small.txt')
-    inp = open('/Users/alok/tmp/softsv_19/all_dels.txt')
+#    inp = open('/Users/alok/tmp/softsv_19/all_dels.txt')
     ref_list = []
     num_pred = 0
 

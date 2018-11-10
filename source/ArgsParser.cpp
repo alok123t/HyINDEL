@@ -45,7 +45,7 @@ void splitFilePaths(const std::string mergedFileNames, std::vector<std::string> 
     return;
 }
 
-bool parseInput(int argc, char const *argv[], struct InputParams *ip) {
+bool parseArgs(int argc, char const *argv[], struct ArgsParams *ap) {
     args::ArgumentParser parser("This program identifies insertions and deletions in NGS data");
     args::HelpFlag help(parser, "help", "Help menu", {'h', "help"});
 
@@ -60,6 +60,9 @@ bool parseInput(int argc, char const *argv[], struct InputParams *ip) {
 
     args::Group groupOutputFile(parser, "Output file name", args::Group::Validators::AllOrNone);
     args::ValueFlag<std::string> outFileName(groupOutputFile, "outFile", "Output FileName", {'o', "outFile"});
+
+    args::Group groupThreads(parser, "Threads", args::Group::Validators::AllOrNone);
+    args::ValueFlag<int> threads(groupThreads, "threads", "Threads", {'t', "threads"});
 
     args::Group groupVerboseFlag(parser, "Verbose", args::Group::Validators::AllOrNone);
     args::ValueFlag<int> verbose(groupVerboseFlag, "verbose", "Verbose", {'v', "verbose"});
@@ -82,14 +85,16 @@ bool parseInput(int argc, char const *argv[], struct InputParams *ip) {
         return false;
     }
 
-    (*ip).insSz = args::get(insSz);
-    (*ip).stdDev = args::get(stdDev);
+    (*ap).insSz = args::get(insSz);
+    (*ap).stdDev = args::get(stdDev);
     
-    if (inpFileName) (*ip).filePaths.push_back(args::get(inpFileName));
-    else if (inpFolderPath) parseFolder(args::get(inpFolderPath), (*ip).filePaths);
-    else if (inpFilesList) splitFilePaths(args::get(inpFilesList), (*ip).filePaths);
+    if (inpFileName) (*ap).filePaths.push_back(args::get(inpFileName));
+    else if (inpFolderPath) parseFolder(args::get(inpFolderPath), (*ap).filePaths);
+    else if (inpFilesList) splitFilePaths(args::get(inpFilesList), (*ap).filePaths);
 
-    if (verbose) (*ip).verbose = args::get(verbose);
+    if (threads) (*ap).threads = std::max(1, std::min(args::get(threads), (int)(std::thread::hardware_concurrency())));
+
+    if (verbose) (*ap).verbose = args::get(verbose);
 
     return true;
 }
