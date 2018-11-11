@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <map>
 #include <set>
@@ -13,6 +14,9 @@
 // bamtools api
 #include "api/BamReader.h"
 #include "api/BamWriter.h"
+
+// task concurrency api
+#include "transwarp.h"
 
 const int minSCLen = 10;
 const int bpTol = 5;
@@ -123,21 +127,24 @@ const std::map<char, int> qual2phred = {
 };
 
 // TODO: class Range, add functions addRange ...
-struct Range {
-	int refID1, refID2, start1, start2, end1, end2, support;
-	bool isPlus1, isPlus2, isMinus1, isMinus2, isSC1, isSC2, isShort;
+struct Range
+{
+    int refID1, refID2, start1, start2, end1, end2, support;
+    bool isPlus1, isPlus2, isMinus1, isMinus2, isSC1, isSC2, isShort;
 };
 
 // TODO: Remove readName
-struct Node {
-	std::string readName, seq, scSeq, nscSeq;
-	int start, end, len, scLen, scPos;
-	bool at5, scAt5, ins;
+struct Node
+{
+    std::string readName, seq, scSeq, nscSeq;
+    int start, end, len, scLen, scPos;
+    bool at5, scAt5, ins;
 };
 
 // TODO: Refactor struct into class, first have a constructor
-struct Cluster {
-	std::vector < Node > n_up, n_down;
+struct Cluster
+{
+    std::vector<Node> n_up, n_down;
 };
 
 #endif // MISC_HPP
