@@ -2,41 +2,56 @@
 
 const std::string COMMA_DELIM = ",";
 
-bool isValidExtension(const std::string & fileName) {
+bool isValidExtension(const std::string &fileName)
+{
     std::size_t foundIdx = fileName.find_last_of(".");
-    if (foundIdx != std::string::npos) {
+    if (foundIdx != std::string::npos)
+    {
         return fileName.substr(foundIdx) == ".bam";
     }
-    else return false;
+    else
+    {
+        return false;
+    }
 }
 
-void parseFolder(std::string folderPath, std::vector<std::string> &filePaths) {
-    if (folderPath.back() != '/') folderPath += "/";
+void parseFolder(std::string folderPath, std::vector<std::string> &filePaths)
+{
+    if (folderPath.back() != '/')
+    {
+        folderPath += "/";
+    }
 
     DIR *dir;
     struct dirent *ent;
     dir = opendir(folderPath.c_str());
 
-    if (dir != NULL) {
+    if (dir != NULL)
+    {
         ent = readdir(dir);
-        while (ent != NULL) {
-            if (isValidExtension(ent->d_name)) {
+        while (ent != NULL)
+        {
+            if (isValidExtension(ent->d_name))
+            {
                 filePaths.push_back(folderPath + ent->d_name);
             }
             ent = readdir(dir);
         }
         closedir(dir);
     }
-    else {
+    else
+    {
         std::cerr << "Input folder path does not exist\n";
     }
 }
 
-void splitFilePaths(const std::string mergedFileNames, std::vector<std::string> &filePaths) {
+void splitFilePaths(const std::string mergedFileNames, std::vector<std::string> &filePaths)
+{
     std::size_t idx = mergedFileNames.find_first_not_of(COMMA_DELIM, 0);
     std::size_t commaIdx = mergedFileNames.find_first_of(COMMA_DELIM, idx);
 
-    while (idx != std::string::npos || commaIdx != std::string::npos) {
+    while (idx != std::string::npos || commaIdx != std::string::npos)
+    {
         filePaths.push_back(mergedFileNames.substr(idx, commaIdx - idx));
 
         idx = mergedFileNames.find_first_not_of(COMMA_DELIM, commaIdx);
@@ -45,7 +60,32 @@ void splitFilePaths(const std::string mergedFileNames, std::vector<std::string> 
     return;
 }
 
-bool parseArgs(int argc, char const *argv[], struct ArgsParams *ap) {
+void checkFolder(const std::string &folderPath, std::string &outFolderPath)
+{
+    outFolderPath = folderPath;
+    if (outFolderPath.back() != '/')
+    {
+        outFolderPath += "/";
+    }
+
+    DIR *dir;
+    struct dirent *ent;
+    dir = opendir(outFolderPath.c_str());
+
+    if (dir != NULL)
+    {
+        closedir(dir);
+    }
+    else
+    {
+        outFolderPath = "./";
+        std::cerr << "Output folder path does not exist\n";
+        std::cerr << "Changing output folder path to \".\"";
+    }
+}
+
+bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
+{
     args::ArgumentParser parser("This program identifies insertions and deletions in NGS data");
     args::HelpFlag help(parser, "help", "Help menu", {'h', "help"});
 
@@ -53,48 +93,72 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams *ap) {
     args::ValueFlag<int> insSz(groupInsertSize, "insSz", "Insert Size", {'s', "insSz"});
     args::ValueFlag<int> stdDev(groupInsertSize, "stdDev", "Standard Deviation", {'d', "stdDev"});
 
-    args::Group groupInputFile(parser, "Input file name", args::Group::Validators::Xor);
-    args::ValueFlag<std::string> inpFileName(groupInputFile, "inpFile", "Input FileName", {'i', "inFile"});
-    args::ValueFlag<std::string> inpFolderPath(groupInputFile, "inpFolder", "Input FileName", {'f', "inFolder"});
-    args::ValueFlag<std::string> inpFilesList(groupInputFile, "inpFiles", "Input FileName", {'m', "inFiles"});
+    args::Group groupInputFile(parser, "Input file/folder path", args::Group::Validators::Xor);
+    args::ValueFlag<std::string> inpFileName(groupInputFile, "inpFile", "Input Path", {'i', "inFile"});
+    args::ValueFlag<std::string> inpFolderPath(groupInputFile, "inpFolder", "Input Folder", {'f', "inFolder"});
+    args::ValueFlag<std::string> inpFilesList(groupInputFile, "inpFiles", "Input FilePaths", {'m', "inFiles"});
 
-    args::Group groupOutputFile(parser, "Output file name", args::Group::Validators::AllOrNone);
-    args::ValueFlag<std::string> outFileName(groupOutputFile, "outFile", "Output FileName", {'o', "outFile"});
+    args::Group groupOutputFolder(parser, "Output folder name", args::Group::Validators::AllOrNone);
+    args::ValueFlag<std::string> outFolderName(groupOutputFolder, "outFolder", "Output Folder", {'o', "outFolder"});
 
     args::Group groupThreads(parser, "Threads", args::Group::Validators::AllOrNone);
     args::ValueFlag<int> threads(groupThreads, "threads", "Threads", {'t', "threads"});
 
     args::Group groupVerboseFlag(parser, "Verbose", args::Group::Validators::AllOrNone);
     args::ValueFlag<int> verbose(groupVerboseFlag, "verbose", "Verbose", {'v', "verbose"});
-    
-    try {
+
+    try
+    {
         parser.ParseCLI(argc, argv);
     }
-    catch (args::Help) {
+    catch (args::Help)
+    {
         std::cout << parser;
         return false;
     }
-    catch (args::ParseError e) {
+    catch (args::ParseError e)
+    {
         std::cerr << e.what() << std::endl;
         std::cerr << parser;
         return false;
     }
-    catch (args::ValidationError e) {
+    catch (args::ValidationError e)
+    {
         std::cerr << e.what() << std::endl;
         std::cerr << parser;
         return false;
     }
 
-    (*ap).insSz = args::get(insSz);
-    (*ap).stdDev = args::get(stdDev);
-    
-    if (inpFileName) (*ap).filePaths.push_back(args::get(inpFileName));
-    else if (inpFolderPath) parseFolder(args::get(inpFolderPath), (*ap).filePaths);
-    else if (inpFilesList) splitFilePaths(args::get(inpFilesList), (*ap).filePaths);
+    ap.insSz = args::get(insSz);
+    ap.stdDev = args::get(stdDev);
 
-    if (threads) (*ap).threads = std::max(1, std::min(args::get(threads), (int)(std::thread::hardware_concurrency())));
+    if (inpFileName)
+    {
+        ap.filePaths.push_back(args::get(inpFileName));
+    }
+    else if (inpFolderPath)
+    {
+        parseFolder(args::get(inpFolderPath), ap.filePaths);
+    }
+    else if (inpFilesList)
+    {
+        splitFilePaths(args::get(inpFilesList), ap.filePaths);
+    }
 
-    if (verbose) (*ap).verbose = args::get(verbose);
+    if (outFolderName)
+    {
+        checkFolder(args::get(outFolderName), ap.outFolderPath);
+    }
+
+    if (threads)
+    {
+        ap.threads = std::max(1, std::min(args::get(threads), (int)(std::thread::hardware_concurrency())));
+    }
+
+    if (verbose)
+    {
+        ap.verbose = args::get(verbose);
+    }
 
     return true;
 }
