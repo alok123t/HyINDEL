@@ -1,5 +1,5 @@
-inp = open('/Users/alok/Downloads/NA12878_svs.vcf')
-out = open('/Users/alok/Tools/indel-detect/scripts/svclassify.txt', 'w')
+inp = open('/Users/alok/Data/GS/NA12878_svs.vcf')
+out = open('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt', 'w')
 
 for l in inp:
     if l[0] == '#':

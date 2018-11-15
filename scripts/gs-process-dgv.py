@@ -1,5 +1,5 @@
-inp = open('/Users/alok/Data/10x/GRCh37_hg19_variants_2014-10-16.txt')
-out = open('/Users/alok/Tools/indel-detect/scripts/dgv.txt', 'w')
+inp = open('/Users/alok/Data/GS/GRCh37_hg19_variants_2016-05-15.txt')
+out = open('/Users/alok/Tools/indel-detect/scripts/gs-dgv.txt', 'w')
 
 for line in inp:
     if line.find('NA12878') == -1:
@@ -9,7 +9,7 @@ for line in inp:
         continue
     if l[5] != 'deletion':
         continue
-    sz = int(l[3])- int(l[2]) + 1
+    sz = int(l[3]) - int(l[2]) + 1
     s = l[1] + '\t' + l[2] + '\t' + l[3] + '\t' + str(sz) + '\n'
     out.write(s)
 

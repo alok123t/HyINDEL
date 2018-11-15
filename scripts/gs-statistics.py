@@ -1,6 +1,7 @@
 import statistics
 import sys
 
+
 def go(fname):
     inp = open(fname)
     l = []
@@ -17,9 +18,11 @@ def go(fname):
     print('StdDev: ', statistics.stdev(l))
     print()
 
+
 def main():
-    go('svclassify.txt')
-    go('dgv.txt')
+    go('gs-svclassify.txt')
+    go('gs-dgv.txt')
+
 
 if __name__ == '__main__':
     if sys.version_info[0] < 3:
