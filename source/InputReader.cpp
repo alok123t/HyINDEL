@@ -270,12 +270,13 @@ void readInput(BamTools::BamReader &br, const int mean, const int stdDev, const 
 		nxtAlnExists = br.GetNextAlignmentCore(aln);
 	}
 
-	std::cerr << "Ranges: " << dels_large.size() << '\n';
+	std::cerr << "Ranges (large): " << dels_large.size() << '\n';
+	std::cerr << "Ranges (small): " << dels_small.size() << '\n';
 
 	std::vector<std::vector<std::string>> info_dels_large, info_dels_small, info_ins;
 	std::vector<std::vector<int>> pred_dels_large, pred_dels_small, pred_ins;
 
-	DelsParse(br, dels_large, info_dels_large, info_dels_small, info_ins, pred_dels_large, pred_dels_small, pred_ins);
+	DelsParse(br, dels_large, dels_small, info_dels_large, info_dels_small, info_ins, pred_dels_large, pred_dels_small, pred_ins);
 
 	parseOutput(outputFile, info_dels_large, info_dels_small, info_ins, pred_dels_large, pred_dels_small, pred_ins);
 }

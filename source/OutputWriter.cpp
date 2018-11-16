@@ -1,6 +1,7 @@
 #include "OutputWriter.hpp"
 
 const std::string suffixDels = "_dels.txt";
+const std::string suffixDelsSmall = "_dels_small.txt";
 
 void parseOutput(const std::string outFilePrefix,
 				 const std::vector<std::vector<std::string>> &info_dels_large,
@@ -27,15 +28,22 @@ void parseOutput(const std::string outFilePrefix,
 
 	ofsDels.close();
 
-	// //cout << "Small Deletions" << '\n';
-	// for(int i = 0; i < pred_dels_small.size(); i++) {
-	// 	std::cout << info_dels_small[i][0] << '\t';
-	// 	for(int j = 0; j < pred_dels_small[i].size(); j++) {
-	// 		std::cout << pred_dels_small[i][j] << '\t';
-	// 	}
-	// 	std::cout << info_dels_small[i][1] << info_dels_small[i][2];
-	// 	std::cout << '\n';
-	// }
+	std::ofstream ofsDelsSmall;
+	std::string outFileDelsSmall = outFilePrefix + suffixDelsSmall;
+	ofsDelsSmall.open(outFileDelsSmall);
+
+	ofsDelsSmall << "Chromosome" << '\t' << "Start" << '\t' << "End" << '\t' << "Size" << '\t' << "Support (PE)" << '\t' << "Support (SR)" << '\t' << "Breakpoint-Sequence" << '\n';
+	for (int i = 0; i < pred_dels_small.size(); i++)
+	{
+		ofsDelsSmall << info_dels_small[i][0] << '\t';
+		for (int j = 0; j < pred_dels_small[i].size(); j++)
+		{
+			ofsDelsSmall << pred_dels_small[i][j] << '\t';
+		}
+		ofsDelsSmall << info_dels_small[i][1] << info_dels_small[i][2] << '\n';
+	}
+
+	ofsDelsSmall.close();
 
 	// //cerr << pred_ins.size() << ' ' << info_ins.size() << '\n';
 
