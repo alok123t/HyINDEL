@@ -75,19 +75,22 @@ def checkCoverage(x_list):
 
 def parse():
     if FLAG_SVCLASSIFY:
-        ref = open('/Users/alok/Tools/indel-detect/scripts/svclassify.txt')
+        ref = open('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt')
     else:
         # ref = open('/Users/alok/Tools/indel-detect/scripts/dgv.txt')
-        ref = open('/Users/alok/Downloads/dgv/dgv-dels-gs.txt')
+        ref = open('/Users/alok/Tools/indel-detect/scripts/gs-dgv.txt')
     # inp = open('/Users/alok/tmp/my_del')
     # inp = open('/Users/alok/Data/30x/SoftSV_19/deletions.txt')
     # inp = open('/Users/alok/tmp/softsv_19/deletions_small.txt')
     # inp = open('/Users/alok/tmp/softsv_19/all_dels.txt')
     # inp = open('/Users/alok/Downloads/chr19-lumpy.txt')
-    inp = open('/Users/alok/Downloads/lumpy.dels.txt')
-    # inp = open('/Users/alok/tmp/19_softsv/deletions_small.txt') 
+    # inp = open('/Users/alok/Downloads/lumpy.dels.txt')
+    # inp = open('/Users/alok/tmp/19_softsv/deletions_small.txt')
     # my dels
     # inp = open('/Users/alok/Downloads/dels')
+    # inp = open('/Users/alok/tmp/chr19_dels.txt')
+    inp = open('/Users/alok/tmp/my19_dels.txt')
+    # inp = open('/Users/alok/tmp/chr19_dels_small.txt')
     # inp = open('/Users/alok/tmp/19_softsv/dels.txt')
     ref_list = []
     num_pred = 0
@@ -164,9 +167,10 @@ def parse():
                 small_co += 1
     print(large, small)
     print(large_co, small_co)
-        # print(ref_list[i][1], ref_list[i][2], str(int(ref_list[i][2])-int(ref_list[i][1])+1))
+    # print(ref_list[i][1], ref_list[i][2], str(int(ref_list[i][2])-int(ref_list[i][1])+1))
     # for i in range(len(found_list)):
-        # print(int(found_list[i]))
+    # print(int(found_list[i]))
+
 
 def main():
     parse()

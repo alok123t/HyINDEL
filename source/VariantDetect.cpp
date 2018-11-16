@@ -438,7 +438,9 @@ void ClustersParse(const std::vector<Cluster> &clusters, bool &isIns, std::vecto
 	}
 }
 
-void DelsParse(BamTools::BamReader &br, const std::vector<Range> &dels_large,
+void DelsParse(BamTools::BamReader &br,
+			   const std::vector<Range> &dels_large,
+			   const std::vector<Range> &dels_small,
 			   std::vector<std::vector<std::string>> &info_dels_large,
 			   std::vector<std::vector<std::string>> &info_dels_small,
 			   std::vector<std::vector<std::string>> &info_ins,
@@ -458,7 +460,6 @@ void DelsParse(BamTools::BamReader &br, const std::vector<Range> &dels_large,
 
 	std::set<int> sl_dels;
 	auto prv = std::chrono::steady_clock::now();
-	std::cerr << "Size SV Ranges : " << dels_large.size() << '\n';
 	int co = 0, edges_co = 0;
 	for (int i = 0; i < dels_large.size(); i++)
 	{
@@ -467,7 +468,7 @@ void DelsParse(BamTools::BamReader &br, const std::vector<Range> &dels_large,
 		if (IsValid(cur))
 		{
 			co++;
-			// cerr << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
+			std::cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << '\n';
 			co5 = co3 = 0;
 			isIns = true;
 			nodes.clear();
@@ -475,7 +476,7 @@ void DelsParse(BamTools::BamReader &br, const std::vector<Range> &dels_large,
 			pred.clear();
 			info.clear();
 
-			// cerr << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ';
+			// std::cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << '\n';
 
 			CreateNodes(cur, br, nodes, co5, co3);
 
@@ -524,43 +525,61 @@ void DelsParse(BamTools::BamReader &br, const std::vector<Range> &dels_large,
 			prv = cur;
 		}
 	}
-	std::cerr << "Valid: " << co << '\n';
-	std::cerr << "Edges built : " << edges_co << '\n';
+	std::cerr << "Large Valid: " << co << '\n';
+	std::cerr << "Large Edges: " << edges_co << '\n';
 	// cerr << "SVOutput count : " << svout_co << '\n';
 	// cerr << "Edges failed count : " << fedg_co << '\n';
 	// cerr << "Vertices failed count : " << fver_co << '\n';
 	// cerr << "Final Deletions Count : " << out_co << '\n';
 
-	// for(int i = 0; i < dels_small.size(); i++) {
-	// 	Range cur = dels_small[i];
-	// 	if(IsValid(cur)) {
-	// 		co5 = co3 = 0;isIns = true;
-	// 		nodes.clear();clusters.clear();pred.clear();info.clear();
+	int small_valid_co = 0, small_edges_co;
+	for (int i = 0; i < dels_small.size(); i++)
+	{
+		Range cur = dels_small[i];
 
-	// 		CreateNodes(cur, br);
+		if (IsValid(cur))
+		{
+			small_valid_co++;
+			std::cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << '\n';
+			co5 = co3 = 0;
+			isIns = true;
+			nodes.clear();
+			clusters.clear();
+			pred.clear();
+			info.clear();
 
-	// 		CreateLinks();
+			CreateNodes(cur, br, nodes, co5, co3);
 
-	// 		ClustersParse();
+			if (CreateLinks(nodes, clusters, co5, co3))
+			{
+				// cerr << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << '\n';
+				small_edges_co++;
+			}
 
-	// 		if(isIns && pred.size()) {
-	// 			cerr << "small \n";
-	// 			pred[3] = cur.support;
-	// 			info[0] = br.GetReferenceData()[cur.refID1].RefName;
-	// 			info_ins.push_back(info);
-	// 			pred_ins.push_back(pred);
-	// 			continue;
-	// 		}
+			ClustersParse(clusters, isIns, pred, info);
 
-	// 		if(pred.size()) {
-	// 			pred[3] = cur.support;
-	// 			info[0] = br.GetReferenceData()[cur.refID1].RefName;
-	// 			info_dels_small.push_back(info);
-	// 			pred_dels_small.push_back(pred);
-	// 		}
-	// 	}
-	// 	else {
-	// 		//cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
-	// 	}
-	// }
+			if (isIns && pred.size())
+			{
+				std::cerr << "small \n";
+				pred[3] = cur.support;
+				info[0] = br.GetReferenceData()[cur.refID1].RefName;
+				info_ins.push_back(info);
+				pred_ins.push_back(pred);
+				continue;
+			}
+
+			if (pred.size())
+			{
+				pred[3] = cur.support;
+				info[0] = br.GetReferenceData()[cur.refID1].RefName;
+				info_dels_small.push_back(info);
+				pred_dels_small.push_back(pred);
+			}
+		}
+		// 	else {
+		// 		//cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
+		// 	}
+	}
+	std::cerr << "Small Valid: " << small_valid_co << '\n';
+	std::cerr << "Small Edges: " << small_edges_co << '\n';
 }
