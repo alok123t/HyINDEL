@@ -1,5 +1,10 @@
 #include "VariantDetect.hpp"
 
+inline bool inBetween(const int &a, const int &b, const int &x)
+{
+	return a <= x && x <= b;
+}
+
 bool IsValid(const Range &r)
 {
 	//Large SV
@@ -172,414 +177,318 @@ bool Check(Node &x, Cluster &c)
 	return true;
 }
 
-bool CreateLinks(std::vector<Node> &nodes, std::vector<Cluster> &clusters, const int &co5, const int &co3)
+bool MatchInCluster(const Node &n1, const Node &n2)
 {
-	if (co5 == 0 || co3 == 0)
+	// both should be at either start or end
+	if (n1.at5 != n2.at5)
 		return false;
-	if (nodes.size() == 0)
+	if (n1.at5 == n1.scAt5 || n2.at5 == n2.scAt5)
 		return false;
-	int add_co = 0;
-
-	bool ret = false;
-	// for (int i = 0; i < nodes.size(); i++) {
-	// 	for (int j = i+1; j < nodes.size(); j++) {
-	// 		if (Match(nodes[i], nodes[j])) {
-	// 			add_co++;
-	// 			ret = true;
-	// 		}
-	// 	}
-	// }
-	// // cerr << "Vertices: " << nodes.size() << ' ' << add_co << '\n';
-	// return ret;
-
-	int found;
-	for (int i = 0; i < nodes.size(); i++)
+	if (abs(n1.scPos - n2.scPos) <= bpTol)
 	{
-		found = -1;
+		return Align(n1.scSeq, n2.scSeq);
+	}
+	return false;
+}
+
+bool FindCluster(const Node &n, const std::vector<Node> &cluster)
+{
+	for (int i = 0; i < cluster.size(); i++)
+	{
+		if (!MatchInCluster(n, cluster[i]))
+			return false;
+	}
+	return true;
+}
+
+void ClusterSC(std::vector<Node> &nodes, std::vector<std::vector<Node>> &clusters)
+{
+	for (int i = 0; i < nodes.size(); ++i)
+	{
+		bool found = false;
 		for (int j = 0; j < clusters.size(); j++)
 		{
-			if (Check(nodes[i], clusters[j]))
+			if (FindCluster(nodes[i], clusters[j]))
 			{
-				found = j;
-				if (nodes[i].at5)
-					clusters[j].n_up.push_back(nodes[i]);
-				else
-					clusters[j].n_down.push_back(nodes[i]);
-
-				if (clusters[j].n_up.size() && clusters[j].n_down.size())
+				found = true;
+				clusters[j].push_back(nodes[i]);
+				if (clusters[j].size() > 100)
 				{
-					ret = true;
+					clusters[j].clear();
 				}
-
 				break;
 			}
 		}
-		if (found == -1)
+		if (!found)
 		{
-			Cluster tmp;
-			if (nodes[i].at5)
-				tmp.n_up.push_back(nodes[i]);
-			else
-				tmp.n_down.push_back(nodes[i]);
-			clusters.push_back(tmp);
+			clusters.push_back({nodes[i]});
+			if (clusters.size() > 100)
+			{
+				clusters.clear();
+				return;
+			}
 		}
 	}
-	return ret;
 }
 
-void CreateNodes(const Range &r, BamTools::BamReader &br, std::vector<Node> &nodes, int &co5, int &co3)
+bool MatchOutNodes(const Node &nUp, const Node &nDown)
 {
-	int prvNodesSz = 0;
-	int refID, start, end;
-	int scIdx, scLen, seqLen;
-	bool at5, hasSC, scAt5;
-	std::string seq, seqQual, scSeq, nscSeq;
+	// both are at same end
+	if (nUp.at5 == nDown.at5)
+		return false;
+	if (nUp.scAt5 == nDown.scAt5)
+		return false;
+	if (nUp.at5 && !nDown.at5 && nUp.scPos < nDown.scPos)
+	{
+		bool match1 = Align(nUp.scSeq, nDown.nscSeq);
+		bool match2 = Align(nUp.nscSeq, nDown.scSeq);
+		return match1 & match2;
+	}
+	if (!nUp.at5 && nDown.at5 && nUp.scPos > nDown.scPos)
+	{
+		bool match1 = Align(nUp.scSeq, nDown.nscSeq);
+		bool match2 = Align(nUp.nscSeq, nDown.scSeq);
+		return match1 & match2;
+	}
+	return false;
+}
+
+bool ClustersMatch(const std::vector<Node> &up, const std::vector<Node> &down)
+{
+	for (int i = 0; i < up.size(); i++)
+	{
+		Node nUp = up[i];
+		for (int j = 0; j < down.size(); j++)
+		{
+			Node nDown = down[j];
+			if (!MatchOutNodes(nUp, nDown))
+				return false;
+		}
+	}
+	return true;
+}
+
+void ExtractSC(BamTools::BamReader &br, const int &refID, const int &start, const int &end, std::vector<std::vector<Node>> &clusters, const bool &at5)
+{
+	std::vector<Node> nodes;
+
 	BamTools::BamAlignment aln;
 	std::vector<int> clipSizes, readPositions, genomePositions;
-	// refactor, remove for loop, have up_nodes, down_nodes
-	for (int bp = 0; bp <= 1; bp++)
+
+	br.SetRegion(refID, start, refID, end);
+	while (br.GetNextAlignmentCore(aln))
 	{
-		int totNewSC = 0;
-		if (bp == 0)
+		clipSizes.clear();
+		readPositions.clear();
+		genomePositions.clear();
+
+		bool hasSC = aln.GetSoftClips(clipSizes, readPositions, genomePositions);
+		if (!hasSC)
+			continue;
+
+		int scIdx = 0;
+		if (clipSizes.size() == 2 && clipSizes[0] < clipSizes[1])
 		{
-			refID = r.refID1;
-			start = r.start1 - 1;
-			end = r.end1 + 1;
-			at5 = true;
+			scIdx = 1;
+		}
+
+		int scLen = clipSizes[scIdx];
+		if (scLen < minSCLen)
+			continue;
+
+		if (!inBetween(start, end, genomePositions[scIdx]))
+			continue;
+
+		aln.BuildCharData();
+		std::string seq = aln.QueryBases;
+		int seqLen = seq.size();
+		std::string seqQual = aln.Qualities;
+
+		bool scAtLeft = (aln.CigarData[scIdx].Type == 'S');
+
+		int trimLen = trimSeq(seq, seqQual, scAtLeft);
+		seqLen -= trimLen;
+		scLen -= trimLen;
+
+		if (scLen < minSCLen)
+			continue;
+
+		std::string scSeq, nscSeq;
+		if (scAtLeft)
+		{
+			scSeq = seq.substr(0, scLen);
+			nscSeq = seq.substr(scLen, seqLen - scLen);
 		}
 		else
 		{
-			refID = r.refID2;
-			start = r.start2 - 1;
-			end = r.end2 + 1;
-			at5 = false;
+			int scPos = readPositions[scIdx];
+			scPos -= getDelSize(aln);
+			scSeq = seq.substr(scPos, scLen);
+			nscSeq = seq.substr(0, seqLen - scLen);
 		}
 
-		br.SetRegion(refID, start, refID, end);
-		// cout << "Nodes range : " << start << ' ' << end << endl;
-		while (br.GetNextAlignmentCore(aln))
+		Node n;
+		n.readName = aln.Name;
+		n.start = aln.Position;
+		n.end = aln.GetEndPosition();
+		n.len = aln.Length;
+		n.scLen = scLen;
+		n.scPos = genomePositions[scIdx];
+		n.seq = aln.QueryBases;
+		n.scSeq = scSeq;
+		n.nscSeq = nscSeq;
+		n.scAt5 = scAtLeft;
+		n.at5 = at5;
+		n.ins = false;
+
+		nodes.push_back(n);
+		if (nodes.size() > 500)
 		{
-			clipSizes.clear();
-			readPositions.clear();
-			genomePositions.clear();
-
-			hasSC = aln.GetSoftClips(clipSizes, readPositions, genomePositions);
-
-			if (!hasSC)
-				continue;
-
-			scIdx = 0;
-			if (clipSizes.size() == 2 && clipSizes[0] < clipSizes[1])
-			{
-				scIdx = 1;
-			}
-
-			scLen = clipSizes[scIdx];
-			// remove if to continue
-			if (scLen >= minSCLen && genomePositions[scIdx] >= start && genomePositions[scIdx] <= end)
-			{
-
-				aln.BuildCharData();
-
-				seq = aln.QueryBases;
-				seqLen = seq.size();
-				seqQual = aln.Qualities;
-
-				scAt5 = (aln.CigarData[scIdx].Type == 'S');
-
-				int trimLen = trimSeq(seq, seqQual, scAt5);
-				seqLen -= trimLen;
-				scLen -= trimLen;
-
-				if (scLen < minSCLen)
-					continue;
-				//sssnnn
-				if (scAt5)
-				{
-					//cout << "st1" << endl;
-					scSeq = seq.substr(0, scLen);
-					nscSeq = seq.substr(scLen, seqLen - scLen);
-					//cout << "en1" << endl;
-				}
-				else
-				{ //nnnsss
-					int scPos = readPositions[scIdx];
-					scPos -= getDelSize(aln);
-					//cout << "st2" << endl;
-					//cout << scPos << ' ' << scLen << ' ' << seq << endl;
-					scSeq = seq.substr(scPos, scLen);
-					//cout << "mi2" << endl;
-					nscSeq = seq.substr(0, seqLen - scLen);
-					//cout << "en2" << endl;
-				}
-
-				int addNewSC = 1;
-				int scCo = 0;
-				for (int i = 0; i < nodes.size() && scCo <= maxSc; i++)
-				{
-					Node x = nodes[i];
-					if (scAt5 == x.scAt5 && abs(genomePositions[scIdx] - x.scPos) <= bpTol)
-					{
-						scCo++;
-						addNewSC = 0;
-					}
-				}
-				totNewSC += addNewSC;
-				if (totNewSC > maxCluster)
-				{
-					// cerr << co5 << ' ' << co3 << " reset\n";
-					nodes.clear();
-					return;
-				}
-				// cerr << scCo << '\n';
-				if (scCo <= maxSc)
-				{
-					if (at5)
-						co5++;
-					else
-						co3++;
-					Node n;
-					n.readName = aln.Name;
-					n.start = aln.Position;
-					n.end = aln.GetEndPosition();
-					n.len = aln.Length;
-					n.scLen = scLen;
-					n.scPos = genomePositions[scIdx];
-					n.seq = aln.QueryBases;
-					n.scSeq = scSeq;
-					n.nscSeq = nscSeq;
-					n.at5 = at5;
-					n.scAt5 = scAt5;
-					n.ins = false;
-					//cout << n.at5 << ' ' << n.scAt5 << ' ' << n.start << ' ' << n.end << ' ' << n.readName << endl;
-
-					nodes.push_back(n);
-				}
-			}
-		}
-		//cout << "End" << endl;
-	}
-	// cerr << co5 << ' ' << co3 << '\n';
-}
-
-std::pair<int, int> Median(std::vector<int> &v)
-{
-	if (v.size() > 0)
-	{
-		std::vector<int> v_org(v);
-		std::sort(v.begin(), v.end());
-		int mid = v.size() / 2;
-		int median = v[mid];
-
-		auto median_it = std::find(v_org.begin(), v_org.end(), median);
-		int median_index = median_it - v_org.begin();
-		return std::make_pair(median, median_index);
-	}
-	return {-1, -1};
-}
-
-void ComputeBreakpoints(const Cluster &c, bool &isIns, std::vector<int> &pred, std::vector<std::string> &info)
-{
-	//ins parsing
-	std::vector<int> bp1, bp2;
-	std::vector<std::string> bp1_seq, bp2_seq;
-	int start, end, size, nscSeqSize;
-	std::string nscSeq;
-
-	for (int i = 0; i < c.n_up.size(); i++)
-	{
-		bp1.push_back(c.n_up[i].scPos);
-		nscSeq = c.n_up[i].nscSeq;
-		nscSeqSize = std::min((int)floor(c.n_up[i].len / 2), (int)nscSeq.size());
-		bp1_seq.push_back(nscSeq.substr(nscSeq.size() - nscSeqSize, nscSeqSize));
-		isIns &= c.n_up[i].ins;
-	}
-	for (int i = 0; i < c.n_down.size(); i++)
-	{
-		bp2.push_back(c.n_down[i].scPos);
-		nscSeq = c.n_down[i].nscSeq;
-		nscSeqSize = std::min((int)floor(c.n_down[i].len / 2), (int)nscSeq.size());
-		bp2_seq.push_back(nscSeq.substr(0, nscSeqSize));
-		isIns &= c.n_down[i].ins;
-	}
-	std::pair<int, int> bp1_med = Median(bp1), bp2_med = Median(bp2);
-	start = bp1_med.first;
-	end = bp2_med.first;
-	if (start != -1 && end != -1)
-	{
-		size = abs(end - (start + 1)) + 1;
-		//cout << start << '\t' << end << '\t' << size << endl;
-		pred.resize(5);
-		pred[0] = start + 1;
-		pred[1] = end;
-		pred[2] = size;
-		pred[4] = c.n_up.size() + c.n_down.size();
-		info.resize(3);
-		info[1] = bp1_seq[bp1_med.second];
-		info[2] = bp2_seq[bp2_med.second];
-	}
-}
-
-void ClustersParse(const std::vector<Cluster> &clusters, bool &isIns, std::vector<int> &pred, std::vector<std::string> &info)
-{
-	int idx = -1, score = 0, here;
-	for (int i = 0; i < clusters.size(); i++)
-	{
-		here = clusters[i].n_up.size() * clusters[i].n_down.size();
-		if (here > score)
-		{
-			score = here;
-			idx = i;
-		}
-	}
-	if (idx != -1)
-	{
-		ComputeBreakpoints(clusters[idx], isIns, pred, info);
-	}
-}
-
-void DelsParse(BamTools::BamReader &br,
-			   const std::vector<Range> &dels_large,
-			   const std::vector<Range> &dels_small,
-			   std::vector<std::vector<std::string>> &info_dels_large,
-			   std::vector<std::vector<std::string>> &info_dels_small,
-			   std::vector<std::vector<std::string>> &info_ins,
-			   std::vector<std::vector<int>> &pred_dels_large,
-			   std::vector<std::vector<int>> &pred_dels_small,
-			   std::vector<std::vector<int>> &pred_ins)
-{
-
-	int co5 = 0, co3 = 0;
-	bool isIns = false;
-
-	std::vector<Node> nodes;
-	std::vector<Cluster> clusters;
-
-	std::vector<std::string> info;
-	std::vector<int> pred;
-
-	std::set<int> sl_dels;
-	auto prv = std::chrono::steady_clock::now();
-	int co = 0, edges_co = 0;
-	for (int i = 0; i < dels_large.size(); i++)
-	{
-		// if ( i > 10 ) break;
-		Range cur = dels_large[i];
-		if (IsValid(cur))
-		{
-			co++;
-			std::cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << '\n';
-			co5 = co3 = 0;
-			isIns = true;
 			nodes.clear();
-			clusters.clear();
-			pred.clear();
-			info.clear();
-
-			// std::cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << '\n';
-
-			CreateNodes(cur, br, nodes, co5, co3);
-
-			if (CreateLinks(nodes, clusters, co5, co3))
-			{
-				// cerr << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << '\n';
-				edges_co++;
-			}
-
-			// for (int cl = 0; cl < clusters.size(); cl++) cerr << "{" << clusters[cl].n_up.size() << ',' << clusters[cl].n_down.size() << "} ";
-			// cerr << '\n';
-
-			ClustersParse(clusters, isIns, pred, info);
-
-			if (isIns && pred.size())
-			{
-				std::cerr << "large \n";
-				pred[3] = cur.support;
-				info[0] = br.GetReferenceData()[cur.refID1].RefName;
-				info_ins.push_back(info);
-				pred_ins.push_back(pred);
-				continue;
-			}
-
-			if (pred.size())
-			{
-				pred[3] = cur.support;
-				// if(dbg_refid.find(cur.refID1) == dbg_refid.end()) {
-				// 	cout << "cur refid : " << cur.refID1 << endl;
-				// 	dbg_refid.insert(cur.refID1);
-				// }
-				info[0] = br.GetReferenceData()[cur.refID1].RefName;
-				info_dels_large.push_back(info);
-				pred_dels_large.push_back(pred);
-			}
-		}
-		// else {
-		// 	//cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
-		// }
-		int percentDone = (((i + 1) * 100 / dels_large.size()) / 5) * 5;
-		if (percentDone != 0 && percentDone % 5 == 0 && sl_dels.find(percentDone) == sl_dels.end())
-		{
-			sl_dels.insert(percentDone);
-			auto cur = std::chrono::steady_clock::now();
-			// cerr << percentDone << "%\r" << std::flush;// << ' ' << setprecision(1) << (std::chrono::duration_cast<std::chrono::minutes>(cur - prv).count()) << endl;
-			prv = cur;
+			return;
 		}
 	}
-	std::cerr << "Large Valid: " << co << '\n';
-	std::cerr << "Large Edges: " << edges_co << '\n';
-	// cerr << "SVOutput count : " << svout_co << '\n';
-	// cerr << "Edges failed count : " << fedg_co << '\n';
-	// cerr << "Vertices failed count : " << fver_co << '\n';
-	// cerr << "Final Deletions Count : " << out_co << '\n';
 
-	int small_valid_co = 0, small_edges_co;
-	for (int i = 0; i < dels_small.size(); i++)
+	ClusterSC(nodes, clusters);
+}
+
+void MedianBP(const std::vector<Node> &nodes, int &bpMedian)
+{
+	std::vector<int> bp;
+	for (int i = 0; i < nodes.size(); i++)
 	{
-		Range cur = dels_small[i];
+		bp.push_back(nodes[i].scPos);
+	}
+
+	int mid = bp.size() / 2;
+	std::nth_element(bp.begin(), bp.begin() + mid, bp.end());
+	bpMedian = bp[mid];
+}
+
+void ParseSC(BamTools::BamReader &br, const Range &r, std::vector<std::string> &out)
+{
+	std::vector<std::vector<Node>> clusterUp, clusterDown;
+	ExtractSC(br, r.refID1, r.start1 - 1, r.end1 + 1, clusterUp, true);
+	if (clusterUp.size() == 0)
+		return;
+	ExtractSC(br, r.refID2, r.start2 - 1, r.end2 + 1, clusterDown, false);
+	if (clusterDown.size() == 0)
+		return;
+
+	int maxScore = 0, maxIdxUp = -1, maxIdxDown = -1;
+
+	for (int i = 0; i < clusterUp.size(); i++)
+	{
+		for (int j = 0; j < clusterDown.size(); j++)
+		{
+			if (ClustersMatch(clusterUp[i], clusterDown[j]))
+			{
+				int hereScore = clusterUp[i].size() * clusterDown[j].size();
+				if (hereScore > maxScore)
+				{
+					maxScore = hereScore;
+					maxIdxUp = i;
+					maxIdxDown = j;
+				}
+			}
+		}
+	}
+
+	if (maxScore != 0)
+	{
+		int bpUp, bpDown;
+		MedianBP(clusterUp[maxIdxUp], bpUp);
+		MedianBP(clusterDown[maxIdxDown], bpDown);
+
+		out.resize(6);
+		out[0] = br.GetReferenceData()[r.refID1].RefName;
+		out[1] = std::to_string(bpUp + 1);
+		out[2] = std::to_string(bpDown);
+		out[3] = std::to_string(bpDown - (bpUp + 1) + 1);
+		out[4] = std::to_string(r.support);
+		out[5] = std::to_string(clusterUp[maxIdxUp].size() + clusterDown[maxIdxDown].size());
+	}
+
+	/*
+	for (int i = 0; i < clusterUp.size(); i++)
+	{
+		std::cout << clusterUp[i].size() << '\n';
+		Node hc;
+		for (int j = 0; j < clusterUp[i].size(); j++)
+		{
+			hc = clusterUp[i][j];
+			std::cout << hc.scPos << ' ' << hc.at5 << ' ' << hc.scAt5 << ' ' << hc.scSeq << ' ' << hc.nscSeq << '\n';
+		}
+	}
+	for (int i = 0; i < clusterDown.size(); i++)
+	{
+		std::cout << clusterDown[i].size() << '\n';
+		Node hc;
+		for (int j = 0; j < clusterDown[i].size(); j++)
+		{
+			hc = clusterDown[i][j];
+			std::cout << hc.scPos << ' ' << hc.at5 << ' ' << hc.scAt5 << ' ' << hc.nscSeq << ' ' << hc.scSeq << '\n';
+		}
+	}
+	*/
+}
+
+std::vector<std::vector<std::string>> DelsParseParallel(std::string fPath, int st, int en, const std::vector<Range> dels)
+{
+	BamTools::BamReader br;
+	br.Open(fPath);
+	br.OpenIndex(fPath + ".bai");
+
+	std::vector<std::vector<std::string>> ret;
+	for (int i = st; i < en; i++)
+	{
+		Range cur = dels[i];
 
 		if (IsValid(cur))
 		{
-			small_valid_co++;
-			std::cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << '\n';
-			co5 = co3 = 0;
-			isIns = true;
-			nodes.clear();
-			clusters.clear();
-			pred.clear();
-			info.clear();
+			std::vector<std::string> out;
+			ParseSC(br, cur, out);
 
-			CreateNodes(cur, br, nodes, co5, co3);
-
-			if (CreateLinks(nodes, clusters, co5, co3))
+			if (out.size())
 			{
-				// cerr << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << '\n';
-				small_edges_co++;
-			}
-
-			ClustersParse(clusters, isIns, pred, info);
-
-			if (isIns && pred.size())
-			{
-				std::cerr << "small \n";
-				pred[3] = cur.support;
-				info[0] = br.GetReferenceData()[cur.refID1].RefName;
-				info_ins.push_back(info);
-				pred_ins.push_back(pred);
-				continue;
-			}
-
-			if (pred.size())
-			{
-				pred[3] = cur.support;
-				info[0] = br.GetReferenceData()[cur.refID1].RefName;
-				info_dels_small.push_back(info);
-				pred_dels_small.push_back(pred);
+				ret.push_back(out);
 			}
 		}
-		// 	else {
-		// 		//cout << cur.start1 << ' ' << cur.end1 << ' ' << cur.start2 << ' ' << cur.end2 << ' ' << cur.isSC1 << ' ' << cur.isSC2 << '\t' << cur.support << endl;
-		// 	}
 	}
-	std::cerr << "Small Valid: " << small_valid_co << '\n';
-	std::cerr << "Small Edges: " << small_edges_co << '\n';
+	br.Close();
+	return ret;
+}
+
+void DelsParse(std::string fPath, const std::vector<Range> &dels, std::vector<std::vector<std::string>> &output)
+{
+	unsigned int th = 4;
+	int till = dels.size();
+
+	transwarp::parallel ex{th};
+	std::vector<std::shared_ptr<transwarp::task<std::vector<std::vector<std::string>>>>> tasks;
+
+	for (int i = 0; i < th; i++)
+	{
+		int st = (till / th) * i;
+		int en = (till / th) * (i + 1);
+		auto fpathTask = transwarp::make_value_task(fPath);
+		auto stTask = transwarp::make_value_task(st);
+		auto enTask = transwarp::make_value_task(en);
+		auto delsTask = transwarp::make_value_task(dels);
+		auto fnTask = transwarp::make_task(transwarp::consume, DelsParseParallel, fpathTask, stTask, enTask, delsTask);
+		tasks.emplace_back(fnTask);
+	}
+
+	for (auto task : tasks)
+	{
+		task->schedule(ex);
+	}
+	for (auto task : tasks)
+	{
+		std::vector<std::vector<std::string>> outputPL = task->get();
+		for (std::vector<std::string> vs : outputPL)
+		{
+			output.push_back(vs);
+		}
+	}
 }

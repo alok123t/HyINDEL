@@ -114,7 +114,7 @@ void AddRange(std::vector<Range> &v, Range r)
 	return;
 }
 
-void readInput(BamTools::BamReader &br, const int mean, const int stdDev, const std::string &outputFile)
+void readInput(std::string filePath, BamTools::BamReader &br, const int mean, const int stdDev, const std::string &outputFile)
 {
 	std::vector<Range> dels_large, dels_small;
 
@@ -270,15 +270,17 @@ void readInput(BamTools::BamReader &br, const int mean, const int stdDev, const 
 		nxtAlnExists = br.GetNextAlignmentCore(aln);
 	}
 
-	std::cerr << "Ranges (large): " << dels_large.size() << '\n';
-	std::cerr << "Ranges (small): " << dels_small.size() << '\n';
+	std::cerr << "Candidate Large Ranges: " << dels_large.size() << '\n';
+	std::cerr << "Candidate Small Ranges: " << dels_small.size() << '\n';
 
-	std::vector<std::vector<std::string>> info_dels_large, info_dels_small, info_ins;
-	std::vector<std::vector<int>> pred_dels_large, pred_dels_small, pred_ins;
+	std::vector<std::vector<std::string>> info_dels_large, info_dels_small;
 
-	DelsParse(br, dels_large, dels_small, info_dels_large, info_dels_small, info_ins, pred_dels_large, pred_dels_small, pred_ins);
+	DelsParse(filePath, dels_large, info_dels_large);
+	std::cerr << "Done Large deletions\n";
+	DelsParse(filePath, dels_small, info_dels_small);
+	std::cerr << "Done Small deletions\n";
 
-	parseOutput(outputFile, info_dels_large, info_dels_small, info_ins, pred_dels_large, pred_dels_small, pred_ins);
+	parseOutput(outputFile, info_dels_large, info_dels_small);
 }
 
 void processInput(const std::string filePath, const int mean, const int stdDev, const std::string folderPath)
@@ -293,7 +295,7 @@ void processInput(const std::string filePath, const int mean, const int stdDev, 
 	std::string outputFile = folderPath;
 	getFileName(filePath, outputFile);
 
-	readInput(br, mean, stdDev, outputFile);
+	readInput(filePath, br, mean, stdDev, outputFile);
 
 	br.Close();
 }
