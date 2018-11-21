@@ -41,4 +41,4 @@ def check_overlap(fName):
 
 
 check_overlap('/Users/alok/Tools/indel-detect/scripts/gs-dgv.txt')
-check_overlap('/Users/alok/Tools/indel-detect/scripts/svclassify.txt')
+check_overlap('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt')

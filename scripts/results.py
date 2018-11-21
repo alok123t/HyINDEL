@@ -77,7 +77,6 @@ def parse():
     if FLAG_SVCLASSIFY:
         ref = open('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt')
     else:
-        # ref = open('/Users/alok/Tools/indel-detect/scripts/dgv.txt')
         ref = open('/Users/alok/Tools/indel-detect/scripts/gs-dgv.txt')
     # inp = open('/Users/alok/tmp/my_del')
     # inp = open('/Users/alok/Data/30x/SoftSV_19/deletions.txt')
@@ -89,9 +88,12 @@ def parse():
     # my dels
     # inp = open('/Users/alok/Downloads/dels')
     # inp = open('/Users/alok/tmp/chr19_dels.txt')
-    inp = open('/Users/alok/tmp/my19_dels.txt')
+    # inp = open('/Users/alok/tmp/20Nov/my_19.txt')
     # inp = open('/Users/alok/tmp/chr19_dels_small.txt')
     # inp = open('/Users/alok/tmp/19_softsv/dels.txt')
+    # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels.txt')
+    # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels_small.txt')
+    inp = open('/Users/alok/Tools/indel-detect/build/chr19.txt')
     ref_list = []
     num_pred = 0
 
@@ -161,15 +163,14 @@ def parse():
             large += 1
             if found_list[i]:
                 large_co += 1
+                print('Large:', ref_st, ref_en)
         else:
             small += 1
             if found_list[i]:
                 small_co += 1
+                print('Small:', ref_st, ref_en)
     print(large, small)
     print(large_co, small_co)
-    # print(ref_list[i][1], ref_list[i][2], str(int(ref_list[i][2])-int(ref_list[i][1])+1))
-    # for i in range(len(found_list)):
-    # print(int(found_list[i]))
 
 
 def main():
