@@ -10,7 +10,7 @@ INP_COV = 30
 
 # Chromosomes to verify
 # verifyChr = ['12', '13', '14', '15', '17', '18', '19']
-verifyChr = ['19']
+verifyChr = ['18']
 # verifyChr = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22']
 
 # This function normalizes chromosome name
@@ -93,7 +93,7 @@ def parse():
     # inp = open('/Users/alok/tmp/19_softsv/dels.txt')
     # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels.txt')
     # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels_small.txt')
-    inp = open('/Users/alok/Tools/indel-detect/build/chr19.txt')
+    inp = open('/Users/alok/Tools/indel-detect/build/chr18.txt')
     ref_list = []
     num_pred = 0
 
@@ -163,12 +163,12 @@ def parse():
             large += 1
             if found_list[i]:
                 large_co += 1
-                print('Large:', ref_st, ref_en)
+                # print('Large:', ref_st, ref_en)
         else:
             small += 1
             if found_list[i]:
                 small_co += 1
-                print('Small:', ref_st, ref_en)
+                # print('Small:', ref_st, ref_en)
     print(large, small)
     print(large_co, small_co)
 

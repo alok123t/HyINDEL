@@ -141,10 +141,4 @@ struct Node
     bool at5, scAt5, ins;
 };
 
-// TODO: Refactor struct into class, first have a constructor
-struct Cluster
-{
-    std::vector<Node> n_up, n_down;
-};
-
 #endif // MISC_HPP
