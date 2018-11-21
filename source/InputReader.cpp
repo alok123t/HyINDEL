@@ -197,7 +197,7 @@ void readInput(std::string filePath, BamTools::BamReader &br, const int mean, co
 			{
 				if (aln.RefID == aln.MateRefID && aln.GetSoftClips(clipSizes, readPositions, genomePositions) && clipSizes.size() == 1 && clipSizes[0] >= minSCLen)
 				{
-					bpRegion = 4 * stdDev;
+					bpRegion = 5 * stdDev;
 					isShort = true;
 					support = 0;
 
