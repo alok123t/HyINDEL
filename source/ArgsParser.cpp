@@ -98,7 +98,7 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
     args::ValueFlag<std::string> inpFilterSCPaths(groupFilteredInput, "softFiles", "Softclip File Paths", {"soft"});
 
     args::Group groupOutputFolder(parser, "Output folder name", args::Group::Validators::AllOrNone);
-    args::ValueFlag<std::string> outFolderName(groupOutputFolder, "outFolder", "Output Folder", {'o', "outFolder"});
+    args::ValueFlag<std::string> outFolderName(groupOutputFolder, "outFolder", "Output Folder", {'o', "out"});
 
     args::Group groupThreads(parser, "Threads", args::Group::Validators::AllOrNone);
     args::ValueFlag<int> threads(groupThreads, "threads", "Threads", {'t', "threads"});
