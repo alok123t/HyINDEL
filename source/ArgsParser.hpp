@@ -16,7 +16,7 @@ struct ArgsParams
     ArgsParams() : threads((int)std::thread::hardware_concurrency()), outFolderPath("./"), verbose(true) {}
     int insSz;
     int stdDev;
-    std::vector<std::string> filePaths;
+    std::vector<std::string> discFilePaths, softFilePaths;
     std::string outFolderPath;
     unsigned int threads;
     bool verbose;
