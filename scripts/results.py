@@ -1,7 +1,7 @@
 import subprocess
 
 FLAG_SVCLASSIFY = True
-FLAG_COV = True
+FLAG_COV = False
 FLAG_50 = True
 
 # Reciprocal overlap
@@ -10,7 +10,7 @@ INP_COV = 30
 
 # Chromosomes to verify
 # verifyChr = ['12', '13', '14', '15', '17', '18', '19']
-verifyChr = ['18']
+verifyChr = ['19']
 # verifyChr = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22']
 
 # This function normalizes chromosome name
@@ -93,7 +93,8 @@ def parse():
     # inp = open('/Users/alok/tmp/19_softsv/dels.txt')
     # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels.txt')
     # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels_small.txt')
-    inp = open('/Users/alok/Tools/indel-detect/build/chr18.txt')
+    # inp = open('/Users/alok/Tools/indel-detect/build/chr19.txt')
+    inp = open('/Users/alok/Tools/indel-detect/build/chr19_disc_dels.txt')
     ref_list = []
     num_pred = 0
 
@@ -104,7 +105,7 @@ def parse():
         here_list = [modChr(ref_l[0]), int(ref_l[1]), int(ref_l[2])]
         ref_list.append(here_list)
 
-    found_list = [False]*len(ref_list)
+    found_list = [[False, 0, 0]]*len(ref_list)
 
     for inp_line in inp:
         inp_l = inp_line.split()
@@ -118,6 +119,11 @@ def parse():
         inp_st = int(inp_l[1])
         inp_en = int(inp_l[2])
         here_list = [inp_chr, inp_st, inp_en]
+        sup1 = 0
+        sup2 = 0
+        if len(inp_l) >= 6:
+            sup1 = int(inp_l[4])
+            sup2 = int(inp_l[5])
 
         if FLAG_50:
             if inp_en - inp_st + 1 < 50:
@@ -130,14 +136,17 @@ def parse():
 
         for i in range(len(ref_list)):
             if checkOverlap(ref_list[i], here_list):
-                found_list[i] = True
+                found_list[i] = [True, sup1, sup2]
 
     ref.close()
     inp.close()
 
     num_ref = len(ref_list)
     num_inp = num_pred
-    num_true = found_list.count(True)
+    num_true = 0
+    for i in range(len(found_list)):
+        if found_list[i][0]:
+            num_true += 1
 
     print('Ref Total: ' + str(num_ref))
     print('Inp Total: ' + str(num_inp))
@@ -161,14 +170,16 @@ def parse():
         ref_len = ref_en - ref_st + 1
         if ref_len > 500:
             large += 1
-            if found_list[i]:
+            if found_list[i][0]:
                 large_co += 1
-                # print('Large:', ref_st, ref_en)
+                print('Large:', ref_st, ref_en,
+                      found_list[i][1], found_list[i][2])
         else:
             small += 1
-            if found_list[i]:
+            if found_list[i][0]:
                 small_co += 1
-                # print('Small:', ref_st, ref_en)
+                print('Small:', ref_st, ref_en,
+                      found_list[i][1], found_list[i][2])
     print(large, small)
     print(large_co, small_co)
 

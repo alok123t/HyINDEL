@@ -27,6 +27,23 @@ const int maxCluster = 10;
 const int matchScore = 2, mismatchScore = -2, gapPenalty = -2;
 const double overlap = 0.8;
 
+struct DiscNode
+{
+    int upStart, upEnd, downStart, downEnd;
+    int support;
+    int refID;
+
+    DiscNode(int t_upStart, int t_upEnd, int t_downStart, int t_downEnd, int t_refID, int t_support) : upStart(t_upStart), upEnd(t_upEnd), downStart(t_downStart), downEnd(t_downEnd), refID(t_refID), support(t_support) {}
+};
+
+struct DiscCluster
+{
+    DiscNode info;
+    std::vector<DiscNode> nodes;
+
+    DiscCluster(DiscNode t_dn) : info(t_dn) { nodes.emplace_back(t_dn); }
+};
+
 const int qualOffset = 33, minScQual = 10;
 
 const std::map<char, int> qual2phred = {

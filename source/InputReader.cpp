@@ -275,27 +275,160 @@ void readInput(std::string filePath, BamTools::BamReader &br, const int mean, co
 
 	std::vector<std::vector<std::string>> info_dels_large, info_dels_small;
 
-	DelsParse(filePath, dels_large, info_dels_large);
-	std::cerr << "Done Large deletions\n";
-	DelsParse(filePath, dels_small, info_dels_small);
-	std::cerr << "Done Small deletions\n";
+	// DelsParse(filePath, dels_large, info_dels_large);
+	// std::cerr << "Done Large deletions\n";
+	// DelsParse(filePath, dels_small, info_dels_small);
+	// std::cerr << "Done Small deletions\n";
 
-	parseOutput(outputFile, info_dels_large, info_dels_small);
+	// parseOutput(outputFile, info_dels_large, info_dels_small);
 }
 
-void processInput(const std::string filePath, const int mean, const int stdDev, const std::string folderPath)
+bool overlapDiscRange(const DiscNode &r, const std::vector<DiscNode> &nodes)
 {
-	BamTools::BamReader br;
+	const double RO = 0.75;
 
-	if (!openInput(filePath, br))
+	for (int i = 0; i < nodes.size(); i++)
+	{
+		double len1 = (r.downEnd - r.upStart + 1) * 1.0;
+		double len2 = (nodes[i].downEnd - nodes[i].upStart + 1) * 1.0;
+
+		int st = std::max(r.upStart, nodes[i].upStart);
+		int en = std::min(r.downEnd, nodes[i].downEnd);
+		double len = (en - st + 1) * 1.0;
+		double overlap = (len > 0.0) ? len : 0.0;
+
+		double ro1 = overlap / len1;
+		double ro2 = overlap / len2;
+		// std::cerr << ro1 << ' ' << ro2 << '\n';
+		bool ok = ro1 >= RO && ro2 >= RO;
+		if (!ok)
+			return false;
+	}
+	return true;
+}
+
+void clusterDiscRange(const DiscNode &r, std::vector<DiscCluster> &c)
+{
+	for (int i = c.size() - 1; i >= 0; i--)
+	{
+		// diff chr
+		if (c[i].info.refID != r.refID)
+			break;
+		// not overlapping
+		if ((c[i].info.downEnd < r.upStart) || (r.downEnd < c[i].info.upStart))
+			continue;
+		if (overlapDiscRange(r, c[i].nodes))
+		{
+			// update info
+			c[i].info.upStart = std::min(c[i].info.upStart, r.upStart);
+			c[i].info.upEnd = std::max(c[i].info.upEnd, r.upEnd);
+			c[i].info.downStart = std::min(c[i].info.downStart, r.downStart);
+			c[i].info.downEnd = std::max(c[i].info.downEnd, r.downEnd);
+			c[i].info.support += r.support;
+			// push new node
+			c[i].nodes.emplace_back(r);
+			return;
+		}
+	}
+	// add new cluster
+	DiscCluster dc(r);
+	c.emplace_back(dc);
+}
+
+void readDiscordant(BamTools::BamReader &br, const int &Mean, const int &StdDev, std::vector<DiscCluster> &clusters)
+{
+	int Threshold = Mean + (3 * StdDev);
+	int bpRegion = Mean + (3 * StdDev);
+
+	BamTools::BamAlignment aln;
+	std::vector<int> clipSizes, readPositions, genomePositions;
+
+	while (br.GetNextAlignmentCore(aln))
+	{
+		// both reads should be mapped
+		if (!(aln.IsMapped() && aln.IsMateMapped()))
+			continue;
+
+		if (!aln.IsProperPair())
+		{
+			// both pairs should be on same chr
+			if (aln.RefID != aln.MateRefID)
+				continue;
+
+			int upSt = aln.Position;
+			int upEn = aln.GetEndPosition();
+			bool upIsRev = aln.IsReverseStrand();
+			int downSt = aln.MatePosition;
+			int downEn = downSt + aln.Length;
+			bool downIsRev = aln.IsMateReverseStrand();
+			int insSz = aln.InsertSize;
+			int support = 1;
+			// Second read
+			if (aln.Position > aln.MatePosition)
+			{
+				std::swap(upSt, downSt);
+				std::swap(upEn, downEn);
+				std::swap(upIsRev, downIsRev);
+				insSz *= -1;
+				// do not add the same read twice
+				support = 0;
+			}
+			// up should be forward and down should be reverse
+			if (upIsRev || !downIsRev)
+				continue;
+			// only large dels
+			if (insSz < Threshold)
+				continue;
+
+			clipSizes.clear();
+			readPositions.clear();
+			genomePositions.clear();
+			bool isSC = aln.GetSoftClips(clipSizes, readPositions, genomePositions);
+			// read should not have SC
+			if (isSC)
+				continue;
+			int upEnBound = upEn + bpRegion;
+			int downStBound = downSt - bpRegion;
+			DiscNode rng(upSt, upEnBound, downStBound, downEn, aln.RefID, support);
+			clusterDiscRange(rng, clusters);
+		}
+	}
+}
+
+void processInput(const std::string discPath, const std::string softPath, const int mean, const int stdDev, const std::string folderPath)
+{
+	BamTools::BamReader discBr;
+
+	if (!openInput(discPath, discBr))
 	{
 		return;
 	}
 
 	std::string outputFile = folderPath;
-	getFileName(filePath, outputFile);
+	getFileName(discPath, outputFile);
 
-	readInput(filePath, br, mean, stdDev, outputFile);
+	// large deletions
+	std::vector<DiscCluster> clusters, filteredClusters;
+	readDiscordant(discBr, mean, stdDev, clusters);
 
-	br.Close();
+	for (int i = 0; i < clusters.size(); ++i)
+	{
+		DiscNode dr = clusters[i].info;
+		if (dr.support > 3 && dr.downEnd - dr.upStart <= 50000)
+		{
+			filteredClusters.emplace_back(clusters[i]);
+		}
+	}
+	clusters.clear();
+	std::cerr << "Candidate deletions: " << filteredClusters.size() << '\n';
+
+	discBr.Close();
+
+	std::vector<std::vector<std::string>> outputDelsLarge;
+	DelsParse(softPath, filteredClusters, outputDelsLarge);
+	std::cerr << "Done Large deletions\n";
+
+	parseOutput(outputFile, outputDelsLarge, 0);
+
+	// readInput(filePath, br, mean, stdDev, outputFile);
 }

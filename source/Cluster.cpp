@@ -19,9 +19,9 @@ int main(int argc, char const *argv[])
 		std::cerr << "Standard deviation: " << ap.stdDev << '\n';
 
 		std::cerr << "Input files: " << '\n';
-		for (std::string fp : ap.filePaths)
+		for (int i = 0; i < ap.discFilePaths.size(); ++i)
 		{
-			std::cerr << '\t' << fp << '\n';
+			std::cerr << '\t' << ap.discFilePaths[i] << '\t' << ap.softFilePaths[i] << '\n';
 		}
 
 		std::cerr << "Output folder: " << ap.outFolderPath << '\n';
@@ -33,13 +33,14 @@ int main(int argc, char const *argv[])
 
 	std::vector<std::shared_ptr<transwarp::task<void>>> tasks;
 
-	for (std::string fp : ap.filePaths)
+	for (int i = 0; i < ap.discFilePaths.size(); ++i)
 	{
-		auto fpTask = transwarp::make_value_task(fp);
+		auto discTask = transwarp::make_value_task(ap.discFilePaths[i]);
+		auto softTask = transwarp::make_value_task(ap.softFilePaths[i]);
 		auto meanTask = transwarp::make_value_task(ap.insSz);
 		auto stdDevTask = transwarp::make_value_task(ap.stdDev);
 		auto outFolderTask = transwarp::make_value_task(ap.outFolderPath);
-		auto inputTask = transwarp::make_task(transwarp::consume, processInput, fpTask, meanTask, stdDevTask, outFolderTask);
+		auto inputTask = transwarp::make_task(transwarp::consume, processInput, discTask, softTask, meanTask, stdDevTask, outFolderTask);
 
 		tasks.emplace_back(inputTask);
 	}

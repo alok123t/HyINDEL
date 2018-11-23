@@ -147,7 +147,7 @@ void ClusterSC(std::vector<Node> &nodes, std::vector<std::vector<Node>> &cluster
 		if (!found)
 		{
 			clusters.push_back({nodes[i]});
-			if (clusters.size() > 100)
+			if (clusters.size() > 175)
 			{
 				clusters.clear();
 				return;
@@ -167,13 +167,7 @@ bool MatchOutNodes(const Node &nUp, const Node &nDown)
 	{
 		bool match1 = Align(nUp.scSeq, nDown.nscSeq);
 		bool match2 = Align(nUp.nscSeq, nDown.scSeq);
-		return match1 & match2;
-	}
-	if (!nUp.at5 && nDown.at5 && nUp.scPos > nDown.scPos)
-	{
-		bool match1 = Align(nUp.scSeq, nDown.nscSeq);
-		bool match2 = Align(nUp.nscSeq, nDown.scSeq);
-		return match1 & match2;
+		return match1 | match2;
 	}
 	return false;
 }
@@ -290,13 +284,14 @@ void MedianBP(const std::vector<Node> &nodes, int &bpMedian)
 	bpMedian = bp[mid];
 }
 
-void ParseSC(BamTools::BamReader &br, const Range &r, std::vector<std::string> &out)
+void ParseSC(BamTools::BamReader &br, const DiscNode &r, std::vector<std::string> &out)
 {
 	std::vector<std::vector<Node>> clusterUp, clusterDown;
-	ExtractSC(br, r.refID1, r.start1 - 1, r.end1 + 1, clusterUp, true);
+	ExtractSC(br, r.refID, r.upStart - 1, r.upEnd + 1, clusterUp, true);
 	if (clusterUp.size() == 0)
 		return;
-	ExtractSC(br, r.refID2, r.start2 - 1, r.end2 + 1, clusterDown, false);
+	
+	ExtractSC(br, r.refID, r.downStart - 1, r.downEnd + 1, clusterDown, false);
 	if (clusterDown.size() == 0)
 		return;
 
@@ -326,7 +321,7 @@ void ParseSC(BamTools::BamReader &br, const Range &r, std::vector<std::string> &
 		MedianBP(clusterDown[maxIdxDown], bpDown);
 
 		out.resize(6);
-		out[0] = br.GetReferenceData()[r.refID1].RefName;
+		out[0] = br.GetReferenceData()[r.refID].RefName;
 		out[1] = std::to_string(bpUp + 1);
 		out[2] = std::to_string(bpDown);
 		out[3] = std::to_string(bpDown - (bpUp + 1) + 1);
@@ -335,6 +330,7 @@ void ParseSC(BamTools::BamReader &br, const Range &r, std::vector<std::string> &
 	}
 
 	/*
+	std::cout << "Upstream\n";
 	for (int i = 0; i < clusterUp.size(); i++)
 	{
 		std::cout << clusterUp[i].size() << '\n';
@@ -345,6 +341,7 @@ void ParseSC(BamTools::BamReader &br, const Range &r, std::vector<std::string> &
 			std::cout << hc.scPos << ' ' << hc.at5 << ' ' << hc.scAt5 << ' ' << hc.scSeq << ' ' << hc.nscSeq << '\n';
 		}
 	}
+	std::cout << "Downstream\n";
 	for (int i = 0; i < clusterDown.size(); i++)
 	{
 		std::cout << clusterDown[i].size() << '\n';
@@ -358,7 +355,7 @@ void ParseSC(BamTools::BamReader &br, const Range &r, std::vector<std::string> &
 	*/
 }
 
-std::vector<std::vector<std::string>> DelsParseParallel(std::string fPath, int st, int en, const std::vector<Range> dels)
+std::vector<std::vector<std::string>> DelsParseParallel(std::string fPath, int st, int en, const std::vector<DiscCluster> dels)
 {
 	BamTools::BamReader br;
 	br.Open(fPath);
@@ -367,24 +364,21 @@ std::vector<std::vector<std::string>> DelsParseParallel(std::string fPath, int s
 	std::vector<std::vector<std::string>> ret;
 	for (int i = st; i < en; i++)
 	{
-		Range cur = dels[i];
+		DiscNode cur = dels[i].info;
 
-		if (IsValid(cur))
+		std::vector<std::string> out;
+		ParseSC(br, cur, out);
+
+		if (out.size())
 		{
-			std::vector<std::string> out;
-			ParseSC(br, cur, out);
-
-			if (out.size())
-			{
-				ret.push_back(out);
-			}
+			ret.push_back(out);
 		}
 	}
 	br.Close();
 	return ret;
 }
 
-void DelsParse(std::string fPath, const std::vector<Range> &dels, std::vector<std::vector<std::string>> &output)
+void DelsParse(std::string fPath, const std::vector<DiscCluster> &dels, std::vector<std::vector<std::string>> &output)
 {
 	unsigned int th = 4;
 	int till = dels.size();
@@ -395,7 +389,7 @@ void DelsParse(std::string fPath, const std::vector<Range> &dels, std::vector<st
 	for (int i = 0; i < th; i++)
 	{
 		int st = (till / th) * i;
-		int en = (till / th) * (i + 1);
+		int en = (i == th - 1) ? dels.size() : (till / th) * (i + 1);
 		auto fpathTask = transwarp::make_value_task(fPath);
 		auto stTask = transwarp::make_value_task(st);
 		auto enTask = transwarp::make_value_task(en);
