@@ -20,11 +20,13 @@ void parseOutput(const std::string outFilePrefix,
 	ofs.open(outFileDels);
 
 	ofs << "Chromosome" << '\t' << "Start" << '\t' << "End" << '\t' << "Size" << '\t' << "Support (PE)" << '\t' << "Support (SR)" << '\n';
-	for (int i = 0; i < output.size(); i++)
+	for (int i = 0; i < output.size(); ++i)
 	{
-		for (int j = 0; j < output[i].size(); j++)
+		for (int j = 0; j < output.at(i).size(); ++j)
 		{
-			ofs << output[i][j] << '\t';
+			ofs << output.at(i).at(j);
+			if (j != output.at(i).size() - 1)
+				ofs << '\t';
 		}
 		ofs << '\n';
 	}

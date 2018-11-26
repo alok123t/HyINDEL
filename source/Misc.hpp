@@ -9,6 +9,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 // bamtools api
@@ -44,7 +45,27 @@ struct DiscCluster
     DiscCluster(DiscNode t_dn) : info(t_dn) { nodes.emplace_back(t_dn); }
 };
 
-const int qualOffset = 33, minScQual = 10;
+struct SoftNode
+{
+    int scPos;
+    int refID;
+    std::string refName;
+    std::string scSeq, nscSeq;
+    bool down;
+
+    SoftNode(int t_scPos, int t_refID, std::string t_refName, std::string t_scSeq, std::string t_nscSeq, bool t_down) : scPos(t_scPos), refID(t_refID), refName(t_refName), scSeq(t_scSeq), nscSeq(t_nscSeq), down(t_down) {}
+};
+
+struct SoftCluster
+{
+    SoftNode info;
+    std::vector<SoftNode> nodes;
+
+    SoftCluster(SoftNode t_sn) : info(t_sn) { nodes.emplace_back(t_sn); }
+};
+
+const int qualOffset = 33,
+          minScQual = 10;
 
 const std::map<char, int> qual2phred = {
     {'!', 33},
