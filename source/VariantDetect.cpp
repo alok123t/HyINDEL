@@ -290,7 +290,7 @@ void ParseSC(BamTools::BamReader &br, const DiscNode &r, std::vector<std::string
 	ExtractSC(br, r.refID, r.upStart - 1, r.upEnd + 1, clusterUp, true);
 	if (clusterUp.size() == 0)
 		return;
-	
+
 	ExtractSC(br, r.refID, r.downStart - 1, r.downEnd + 1, clusterDown, false);
 	if (clusterDown.size() == 0)
 		return;
@@ -411,3 +411,155 @@ void DelsParse(std::string fPath, const std::vector<DiscCluster> &dels, std::vec
 		}
 	}
 }
+
+void SoftMedianBP(const std::vector<SoftNode> &nodes, int &bpMedian)
+{
+	std::vector<int> bp;
+	for (int i = 0; i < nodes.size(); i++)
+	{
+		bp.push_back(nodes[i].scPos);
+	}
+
+	int mid = bp.size() / 2;
+	std::nth_element(bp.begin(), bp.begin() + mid, bp.end());
+	bpMedian = bp[mid];
+}
+
+bool MatchOutClusters(const SoftCluster &c1, const SoftCluster &c2)
+{
+	if (c1.info.scPos > c2.info.scPos)
+		return false;
+
+	for (int i = 0; i < c1.nodes.size(); ++i)
+	{
+		for (int j = 0; j < c2.nodes.size(); ++j)
+		{
+			bool match1 = Align(c1.nodes[i].scSeq, c2.nodes[j].nscSeq);
+			bool match2 = Align(c1.nodes[i].nscSeq, c2.nodes[j].scSeq);
+			if (!(match1 & match2))
+				return false;
+		}
+	}
+	return true;
+}
+
+void FindInCluster(const SoftCluster &sc1, const std::vector<SoftCluster> &c, std::vector<std::string> &out)
+{
+	int maxScore = 0, maxIdx = -1;
+	for (int i = 0; i < c.size(); ++i)
+	{
+		SoftCluster sc2 = c[i];
+		if (MatchOutClusters(sc1, sc2))
+		{
+			int hereScore = sc1.nodes.size() * sc2.nodes.size();
+			if (hereScore > maxScore)
+			{
+				maxScore = hereScore;
+				maxIdx = i;
+			}
+		}
+	}
+	if (maxScore != 0)
+	{
+		int bpUp, bpDown;
+		SoftMedianBP(sc1.nodes, bpUp);
+		SoftMedianBP(c[maxIdx].nodes, bpDown);
+
+		out.resize(6);
+		out[0] = sc1.info.refName;
+		out[1] = std::to_string(bpUp + 1);
+		out[2] = std::to_string(bpDown);
+		out[3] = std::to_string(bpDown - (bpUp + 1) + 1);
+		out[4] = std::string("N/A");
+		out[5] = std::to_string(sc1.nodes.size() + c[maxIdx].nodes.size());
+		// std::cerr << bpUp + 1 << ' ' << bpDown << ' ' << bpDown - (bpUp + 1) + 1 << ' ' << sc1.nodes.size() << ' ' << c[maxIdx].nodes.size() << '\n';
+	}
+}
+
+void DelsSmallMatch(std::map<int, std::vector<SoftCluster>> &cUp, std::map<int, std::vector<SoftCluster>> &cDown, std::vector<std::vector<std::string>> &output)
+{
+	for (auto x : cUp)
+	{
+		int bId = x.first;
+		if (cUp.find(bId) == cUp.end() || cDown.find(bId) == cDown.end())
+			continue;
+		for (int i = 0; i < cUp[bId].size(); i++)
+		{
+			std::vector<std::string> out;
+			FindInCluster(cUp[bId][i], cDown[bId], out);
+
+			if (out.size())
+			{
+				output.push_back(out);
+				continue;
+			}
+
+			// search in next bin
+			if (cDown.find(bId + 1) == cDown.end())
+				continue;
+
+			FindInCluster(cUp[bId][i], cDown[bId + 1], out);
+
+			if (out.size())
+			{
+				output.push_back(out);
+				continue;
+			}
+		}
+	}
+}
+
+/*
+std::vector<std::vector<std::string>> DelsSmallMatchParallel(int st, int en, const std::vector<SoftCluster> clusters)
+{
+	std::vector<std::vector<std::string>> ret;
+	for (int i = st; i < en; i++)
+	{
+		SoftNode cur = clusters[i].info;
+		if (cur.down)
+		{
+			std::vector<std::string> out;
+			FindClusters(i, clusters, out);
+
+			if (out.size())
+			{
+				ret.push_back(out);
+			}
+		}
+	}
+	return ret;
+}
+
+void DelsSmallMatch(const std::vector<SoftCluster> &clusters, std::vector<std::vector<std::string>> &output)
+{
+	unsigned int th = 4;
+	int till = clusters.size();
+
+	transwarp::parallel ex{th};
+	std::vector<std::shared_ptr<transwarp::task<std::vector<std::vector<std::string>>>>> tasks;
+
+	for (int i = 0; i < th; i++)
+	{
+		int st = (till / th) * i;
+		int en = (i == th - 1) ? clusters.size() : (till / th) * (i + 1);
+		auto stTask = transwarp::make_value_task(st);
+		auto enTask = transwarp::make_value_task(en);
+		auto clTask = transwarp::make_value_task(clusters);
+		auto fnTask = transwarp::make_task(transwarp::consume, DelsSmallMatchParallel, stTask, enTask, clTask);
+		tasks.emplace_back(fnTask);
+	}
+
+	for (auto task : tasks)
+	{
+		task->schedule(ex);
+	}
+	for (auto task : tasks)
+	{
+		std::vector<std::vector<std::string>> outputPL = task->get();
+		for (std::vector<std::string> vs : outputPL)
+		{
+			output.push_back(vs);
+		}
+	}
+}
+*/

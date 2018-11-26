@@ -389,25 +389,183 @@ void readDiscordant(BamTools::BamReader &br, const int &Mean, const int &StdDev,
 				continue;
 			int upEnBound = upEn + bpRegion;
 			int downStBound = downSt - bpRegion;
-			DiscNode rng(upSt, upEnBound, downStBound, downEn, aln.RefID, support);
-			clusterDiscRange(rng, clusters);
+			DiscNode dn(upSt, upEnBound, downStBound, downEn, aln.RefID, support);
+			clusterDiscRange(dn, clusters);
 		}
 	}
 }
 
-void processInput(const std::string discPath, const std::string softPath, const int mean, const int stdDev, const std::string folderPath)
+bool overlapSoft(const SoftNode &n, const SoftCluster c)
+{
+	if (n.scPos > c.info.scPos + 20)
+		return false;
+	for (int i = 0; i < c.nodes.size(); i++)
+	{
+		int diff = std::abs(n.scPos - c.nodes[i].scPos);
+		if (diff > bpTol)
+			return false;
+		if (!Align(n.scSeq, c.nodes[i].scSeq))
+			return false;
+		if (!Align(n.nscSeq, c.nodes[i].nscSeq))
+			return false;
+	}
+	return true;
+}
+
+void clusterSoftInternal(const SoftNode &n, std::vector<SoftCluster> &c)
+{
+	for (int i = c.size() - 1; i >= 0; i--)
+	{
+		// diff chr
+		if (c[i].info.refID != n.refID)
+			break;
+		// too far apart, will not find a cluster
+		if (n.scPos > c[i].info.scPos + 100)
+			break;
+		if (overlapSoft(n, c[i]))
+		{
+			c[i].nodes.emplace_back(n);
+			if (c[i].nodes.size() > 500)
+			{
+				std::cerr << "nodes clear\n";
+				c[i].nodes.clear();
+			}
+			return;
+		}
+	}
+	// add new cluster
+	SoftCluster sc(n);
+	c.emplace_back(n);
+}
+
+void clusterSoft(const std::map<int, std::vector<SoftNode>> &bkt, std::map<int, std::vector<SoftCluster>> &clusters)
+{
+	for (auto x : bkt)
+	{
+		int bId = x.first;
+		for (int i = 0; i < bkt.at(bId).size(); ++i)
+		{
+			clusterSoftInternal(bkt.at(bId).at(i), clusters[bId]);
+		}
+	}
+}
+
+void readSoft(BamTools::BamReader &br, std::map<int, std::vector<SoftNode>> &bktUp, std::map<int, std::vector<SoftNode>> &bktDown)
+{
+	int co = 0;
+	br.SetRegion(18, 59000000, 18, 60000000);
+	BamTools::BamAlignment aln;
+	std::vector<int> clipSizes, readPositions, genomePositions;
+	std::unordered_set<int> ust;
+
+	while (br.GetNextAlignmentCore(aln))
+	{
+		if (!(aln.IsMapped() && aln.IsMateMapped()))
+			continue;
+
+		if (!aln.IsProperPair())
+			continue;
+		clipSizes.clear();
+		readPositions.clear();
+		genomePositions.clear();
+		bool isSC = aln.GetSoftClips(clipSizes, readPositions, genomePositions);
+		// read should have SC
+		if (!isSC)
+			continue;
+		bool down = false;
+		int scIdx = 0;
+		// softclips are either at beginning or end or both
+		// sssnnn cigar:[X S .*] down bp
+		// nnnsss cigar:[.* X S] up bp
+		if (clipSizes.size() == 1)
+		{
+			scIdx = 0;
+			if (clipSizes.front() < minSCLen)
+				continue;
+			if (aln.CigarData.front().Type == 'S')
+				down = true;
+			else
+				down = false;
+		}
+		else if (clipSizes.size() == 2)
+		{
+			if (clipSizes.front() < 10 && clipSizes.back() < 10)
+				continue;
+
+			if (clipSizes.front() > clipSizes.back())
+			{
+				down = true;
+				scIdx = 0;
+			}
+			else
+			{
+				down = false;
+				scIdx = 1;
+			}
+		}
+
+		int scLen = clipSizes[scIdx];
+		int scPos = genomePositions[scIdx];
+
+		aln.BuildCharData();
+		std::string seq = aln.QueryBases;
+		int seqLen = seq.size();
+		std::string seqQual = aln.Qualities;
+
+		int trimLen = trimSeq(seq, seqQual, down);
+		seqLen -= trimLen;
+		scLen -= trimLen;
+
+		if (scLen < minSCLen)
+			continue;
+
+		std::string refName = br.GetReferenceData()[aln.RefID].RefName;
+		std::string scSeq, nscSeq;
+		SoftNode sn(scPos, aln.RefID, refName, scSeq, nscSeq, down);
+
+		int bId = scPos / 1000;
+
+		if (ust.find(bId) != ust.end())
+			continue;
+
+		if (down)
+		{
+			sn.scSeq = seq.substr(0, scLen);
+			sn.nscSeq = seq.substr(scLen, seqLen - scLen);
+
+			bktDown[bId].push_back(sn);
+		}
+		else
+		{
+			// if del exists in cigar
+			int rPos = readPositions[scIdx];
+			rPos -= getDelSize(aln);
+
+			sn.nscSeq = seq.substr(0, seqLen - scLen);
+			sn.scSeq = seq.substr(rPos, scLen);
+
+			bktUp[bId].push_back(sn);
+		}
+		co++;
+
+		if (bktUp[bId].size() > 1000 || bktDown[bId].size() > 1000)
+		{
+			ust.insert(bId);
+			bktUp[bId].clear();
+			bktDown[bId].clear();
+		}
+	}
+}
+
+void largeDeletions(const std::string discPath, const std::string softPath, const int mean, const int stdDev, const std::string folderPath)
 {
 	BamTools::BamReader discBr;
-
 	if (!openInput(discPath, discBr))
 	{
 		return;
 	}
 
-	std::string outputFile = folderPath;
-	getFileName(discPath, outputFile);
-
-	// large deletions
+	// candidate large deletions
 	std::vector<DiscCluster> clusters, filteredClusters;
 	readDiscordant(discBr, mean, stdDev, clusters);
 
@@ -420,15 +578,58 @@ void processInput(const std::string discPath, const std::string softPath, const 
 		}
 	}
 	clusters.clear();
-	std::cerr << "Candidate deletions: " << filteredClusters.size() << '\n';
+	std::cerr << "Candidate Large deletions: " << filteredClusters.size() << '\n';
 
 	discBr.Close();
 
+	// parse softclip around candidate regions
 	std::vector<std::vector<std::string>> outputDelsLarge;
 	DelsParse(softPath, filteredClusters, outputDelsLarge);
 	std::cerr << "Done Large deletions\n";
 
+	// print deletion to file
+	std::string outputFile = folderPath;
+	getFileName(discPath, outputFile);
 	parseOutput(outputFile, outputDelsLarge, 0);
+}
+
+void smallDeletions(const std::string softPath, const std::string folderPath)
+{
+	BamTools::BamReader softBr;
+	if (!openInput(softPath, softBr))
+	{
+		return;
+	}
+
+	std::map<int, std::vector<SoftNode>> bktUp, bktDown;
+	readSoft(softBr, bktUp, bktDown);
+
+	softBr.Close();
+
+	// find matching clusters
+	std::map<int, std::vector<SoftCluster>> clustersUp, clustersDown;
+	clusterSoft(bktUp, clustersUp);
+	clusterSoft(bktDown, clustersDown);
+	// std::cerr << "cluster done\n";
+
+	bktUp.clear();
+	bktDown.clear();
+
+	std::vector<std::vector<std::string>> outputDelsSmall;
+	DelsSmallMatch(clustersUp, clustersDown, outputDelsSmall);
+
+	// print deletion to file
+	std::string outputFile = folderPath;
+	getFileName(softPath, outputFile);
+	parseOutput(outputFile, outputDelsSmall, 1);
+	// std::cerr << "cross match done\n";
+}
+
+void processInput(const std::string discPath, const std::string softPath, const int mean, const int stdDev, const std::string folderPath)
+{
+	// largeDeletions(discPath, softPath, mean, stdDev, folderPath);
+
+	smallDeletions(softPath, folderPath);
 
 	// readInput(filePath, br, mean, stdDev, outputFile);
 }
