@@ -1,31 +1,5 @@
 #include "VariantDetect.hpp"
 
-inline bool inBetween(const int &a, const int &b, const int &x)
-{
-	return a <= x && x <= b;
-}
-
-bool IsValid(const Range &r)
-{
-	//Large SV
-	if (!r.isShort)
-	{
-		//bp region shouldn't be less than 10bp
-		if (r.isSC1 || r.isSC2 || abs(r.end1 - r.start1 + 1) < 10 || abs(r.end2 - r.start2 + 1) < 10)
-			return false;
-		else
-			return true;
-	}
-	else
-	{ //Small SV
-		//Both SC need to be present
-		if (r.isSC1 && r.isSC2)
-			return true;
-		else
-			return false;
-	}
-}
-
 int getDelSize(BamTools::BamAlignment &aln)
 {
 
@@ -205,6 +179,12 @@ void ExtractSC(BamTools::BamReader &br, const int &refID, const int &start, cons
 		if (!hasSC)
 			continue;
 
+		bool down = false;
+		if (aln.Position > aln.MatePosition)
+		{
+			down = true;
+		}
+
 		int scIdx = 0;
 		if (clipSizes.size() == 2 && clipSizes[0] < clipSizes[1])
 		{
@@ -232,6 +212,8 @@ void ExtractSC(BamTools::BamReader &br, const int &refID, const int &start, cons
 		if (scLen < minSCLen)
 			continue;
 
+		int scPos = genomePositions[scIdx];
+
 		std::string scSeq, nscSeq;
 		if (scAtLeft)
 		{
@@ -240,11 +222,14 @@ void ExtractSC(BamTools::BamReader &br, const int &refID, const int &start, cons
 		}
 		else
 		{
-			int scPos = readPositions[scIdx];
+			scPos = readPositions[scIdx];
 			scPos -= getDelSize(aln);
 			scSeq = seq.substr(scPos, scLen);
 			nscSeq = seq.substr(0, seqLen - scLen);
 		}
+
+		std::string refName = br.GetReferenceData()[aln.RefID].RefName;
+		SoftNode sn(scPos, aln.RefID, refName, scSeq, nscSeq, down, at5);
 
 		Node n;
 		n.readName = aln.Name;
@@ -355,7 +340,7 @@ void ParseSC(BamTools::BamReader &br, const DiscNode &r, std::vector<std::string
 	*/
 }
 
-std::vector<std::vector<std::string>> DelsParseParallel(std::string fPath, int st, int en, const std::vector<DiscCluster> dels)
+std::vector<std::vector<std::string>> DelsLargeParallel(std::string fPath, int st, int en, const std::vector<DiscCluster> dels)
 {
 	BamTools::BamReader br;
 	br.Open(fPath);
@@ -378,7 +363,7 @@ std::vector<std::vector<std::string>> DelsParseParallel(std::string fPath, int s
 	return ret;
 }
 
-void DelsParse(std::string fPath, const std::vector<DiscCluster> &dels, std::vector<std::vector<std::string>> &output)
+void DelsLarge(std::string fPath, const std::vector<DiscCluster> &dels, std::vector<std::vector<std::string>> &output)
 {
 	unsigned int th = 4;
 	int till = dels.size();
@@ -394,7 +379,7 @@ void DelsParse(std::string fPath, const std::vector<DiscCluster> &dels, std::vec
 		auto stTask = transwarp::make_value_task(st);
 		auto enTask = transwarp::make_value_task(en);
 		auto delsTask = transwarp::make_value_task(dels);
-		auto fnTask = transwarp::make_task(transwarp::consume, DelsParseParallel, fpathTask, stTask, enTask, delsTask);
+		auto fnTask = transwarp::make_task(transwarp::consume, DelsLargeParallel, fpathTask, stTask, enTask, delsTask);
 		tasks.emplace_back(fnTask);
 	}
 
@@ -427,16 +412,38 @@ void SoftMedianBP(const std::vector<SoftNode> &nodes, int &bpMedian)
 
 bool MatchOutClusters(const SoftCluster &c1, const SoftCluster &c2)
 {
-	if (c1.info.scPos > c2.info.scPos)
+	int diffLen = c2.info.scPos - c1.info.scPos;
+	if (diffLen < MIN_DEL_LEN || diffLen > MAX_DEL_LEN)
 		return false;
 
+	std::string nLeft, nRight, curLeft, curRight;
 	for (int i = 0; i < c1.nodes.size(); ++i)
 	{
+		if (c1.nodes.at(i).scAtRight)
+		{
+			nLeft = c1.nodes.at(i).nscSeq;
+			nRight = c1.nodes.at(i).scSeq;
+		}
+		else
+		{
+			nLeft = c1.nodes.at(i).scSeq;
+			nRight = c1.nodes.at(i).nscSeq;
+		}
 		for (int j = 0; j < c2.nodes.size(); ++j)
 		{
-			bool match1 = Align(c1.nodes[i].scSeq, c2.nodes[j].nscSeq);
-			bool match2 = Align(c1.nodes[i].nscSeq, c2.nodes[j].scSeq);
-			if (!(match1 & match2))
+			if (c2.nodes.at(j).scAtRight)
+			{
+				curLeft = c2.nodes.at(j).nscSeq;
+				curRight = c2.nodes.at(j).scSeq;
+			}
+			else
+			{
+				curLeft = c2.nodes.at(j).scSeq;
+				curRight = c2.nodes.at(j).nscSeq;
+			}
+			if (!Align(nLeft, curLeft))
+				return false;
+			if (!Align(nRight, curRight))
 				return false;
 		}
 	}
@@ -470,24 +477,25 @@ void FindInCluster(const SoftCluster &sc1, const std::vector<SoftCluster> &c, st
 		out[1] = std::to_string(bpUp + 1);
 		out[2] = std::to_string(bpDown);
 		out[3] = std::to_string(bpDown - (bpUp + 1) + 1);
-		out[4] = std::string("N/A");
-		out[5] = std::to_string(sc1.nodes.size() + c[maxIdx].nodes.size());
-		// std::cerr << bpUp + 1 << ' ' << bpDown << ' ' << bpDown - (bpUp + 1) + 1 << ' ' << sc1.nodes.size() << ' ' << c[maxIdx].nodes.size() << '\n';
+		out[4] = std::string("0");
+		int scSup = sc1.nodes.size() + c[maxIdx].nodes.size();
+		if (scSup < MIN_SC_SUP)
+		{
+			out.clear();
+			return;
+		}
+		out[5] = std::to_string(scSup);
 	}
 }
 
-void DelsSmallMatch(std::map<int, std::vector<SoftCluster>> &cUp, std::map<int, std::vector<SoftCluster>> &cDown, std::vector<std::vector<std::string>> &output)
+void DelsSmall(const std::vector<std::vector<SoftCluster>> &cUp, const std::vector<std::vector<SoftCluster>> &cDown, std::vector<std::vector<std::string>> &output)
 {
-	for (auto x : cUp)
+	for (int i = 0; i < cUp.size(); ++i)
 	{
-		int bId = x.first;
-		if (cUp.find(bId) == cUp.end() || cDown.find(bId) == cDown.end())
-			continue;
-		for (int i = 0; i < cUp[bId].size(); i++)
+		for (int j = 0; j < cUp.at(i).size(); ++j)
 		{
 			std::vector<std::string> out;
-			FindInCluster(cUp[bId][i], cDown[bId], out);
-
+			FindInCluster(cUp.at(i).at(j), cDown.at(i), out);
 			if (out.size())
 			{
 				output.push_back(out);
@@ -495,11 +503,10 @@ void DelsSmallMatch(std::map<int, std::vector<SoftCluster>> &cUp, std::map<int, 
 			}
 
 			// search in next bin
-			if (cDown.find(bId + 1) == cDown.end())
+			if (j + 1 >= cDown.size())
 				continue;
 
-			FindInCluster(cUp[bId][i], cDown[bId + 1], out);
-
+			FindInCluster(cUp.at(i).at(j), cDown.at(i + 1), out);
 			if (out.size())
 			{
 				output.push_back(out);
@@ -508,58 +515,3 @@ void DelsSmallMatch(std::map<int, std::vector<SoftCluster>> &cUp, std::map<int, 
 		}
 	}
 }
-
-/*
-std::vector<std::vector<std::string>> DelsSmallMatchParallel(int st, int en, const std::vector<SoftCluster> clusters)
-{
-	std::vector<std::vector<std::string>> ret;
-	for (int i = st; i < en; i++)
-	{
-		SoftNode cur = clusters[i].info;
-		if (cur.down)
-		{
-			std::vector<std::string> out;
-			FindClusters(i, clusters, out);
-
-			if (out.size())
-			{
-				ret.push_back(out);
-			}
-		}
-	}
-	return ret;
-}
-
-void DelsSmallMatch(const std::vector<SoftCluster> &clusters, std::vector<std::vector<std::string>> &output)
-{
-	unsigned int th = 4;
-	int till = clusters.size();
-
-	transwarp::parallel ex{th};
-	std::vector<std::shared_ptr<transwarp::task<std::vector<std::vector<std::string>>>>> tasks;
-
-	for (int i = 0; i < th; i++)
-	{
-		int st = (till / th) * i;
-		int en = (i == th - 1) ? clusters.size() : (till / th) * (i + 1);
-		auto stTask = transwarp::make_value_task(st);
-		auto enTask = transwarp::make_value_task(en);
-		auto clTask = transwarp::make_value_task(clusters);
-		auto fnTask = transwarp::make_task(transwarp::consume, DelsSmallMatchParallel, stTask, enTask, clTask);
-		tasks.emplace_back(fnTask);
-	}
-
-	for (auto task : tasks)
-	{
-		task->schedule(ex);
-	}
-	for (auto task : tasks)
-	{
-		std::vector<std::vector<std::string>> outputPL = task->get();
-		for (std::vector<std::string> vs : outputPL)
-		{
-			output.push_back(vs);
-		}
-	}
-}
-*/

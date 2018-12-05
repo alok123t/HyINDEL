@@ -1,7 +1,6 @@
 {
     "filters": [
         {
-            "isProperPair": "true",
             "isMapped": "true",
             "isMateMapped": "true",
             "cigar": "*S*"
