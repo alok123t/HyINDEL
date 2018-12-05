@@ -1,8 +1,10 @@
 import subprocess
 
 FLAG_SVCLASSIFY = True
-FLAG_COV = False
-FLAG_50 = True
+FLAG_COV = True
+FLAG_50 = False
+FLAG_SUPPORT = True
+VAL_SUPPORT = 5
 
 # Reciprocal overlap
 RO = 0.5
@@ -13,10 +15,12 @@ INP_COV = 30
 verifyChr = ['19']
 # verifyChr = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22']
 
-# This function normalizes chromosome name
-# chrchr1 -> 1
-# chr1 -> 1
-# 1 -> 1
+"""
+This function normalizes chromosome name
+chrchr1 -> 1
+chr1 -> 1
+1 -> 1
+"""
 
 
 def modChr(s):
@@ -27,9 +31,12 @@ def modChr(s):
     else:
         return s
 
-# This function returns
-# True: if there is reciprocal overlap and are on same chr
-# False: else
+
+"""
+This function returns
+True: if there is reciprocal overlap and are on same chr
+False: else
+"""
 
 
 def checkOverlap(list_a, list_b):
@@ -82,6 +89,7 @@ def parse():
     # inp = open('/Users/alok/Data/30x/SoftSV_19/deletions.txt')
     # inp = open('/Users/alok/tmp/softsv_19/deletions_small.txt')
     # inp = open('/Users/alok/tmp/softsv_19/all_dels.txt')
+    # lumpy
     # inp = open('/Users/alok/Downloads/chr19-lumpy.txt')
     # inp = open('/Users/alok/Downloads/lumpy.dels.txt')
     # inp = open('/Users/alok/tmp/19_softsv/deletions_small.txt')
@@ -94,7 +102,14 @@ def parse():
     # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels.txt')
     # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels_small.txt')
     # inp = open('/Users/alok/Tools/indel-detect/build/chr19.txt')
-    inp = open('/Users/alok/Tools/indel-detect/build/chr19_disc_dels.txt')
+    # inp = open('/Users/alok/Tools/indel-detect/build/chr19_disc_dels.txt')
+    # inp = open('/Users/alok/tmp/26Nov/chr19_soft_dels_small.txt')
+    # inp = open('/Users/alok/tmp/26Nov/chr19_disc_dels.txt')
+    # inp = open('/Users/alok/tmp/26Nov/chr19_dels.txt')
+    # inp = open('/Users/alok/tmp/30Nov/chr19_disc_dels.txt')
+    # inp = open('/Users/alok/tmp/Dec/5/chr19_soft_dels_small.txt')
+    # inp = open('/Users/alok/tmp/Dec/5/chr19_disc_dels.txt')
+    inp = open('/Users/alok/tmp/Dec/5/chr19.txt')
     ref_list = []
     num_pred = 0
 
@@ -124,6 +139,9 @@ def parse():
         if len(inp_l) >= 6:
             sup1 = int(inp_l[4])
             sup2 = int(inp_l[5])
+            if FLAG_SUPPORT:
+                if sup1 + sup2 < VAL_SUPPORT:
+                    continue
 
         if FLAG_50:
             if inp_en - inp_st + 1 < 50:
@@ -133,6 +151,7 @@ def parse():
                 continue
 
         num_pred += 1
+        # print(here_list, inp_en - inp_st + 1)
 
         for i in range(len(ref_list)):
             if checkOverlap(ref_list[i], here_list):
@@ -172,14 +191,12 @@ def parse():
             large += 1
             if found_list[i][0]:
                 large_co += 1
-                print('Large:', ref_st, ref_en,
-                      found_list[i][1], found_list[i][2])
+                # print('Large:', ref_st, ref_en, found_list[i][1], found_list[i][2])
         else:
             small += 1
             if found_list[i][0]:
                 small_co += 1
-                print('Small:', ref_st, ref_en,
-                      found_list[i][1], found_list[i][2])
+                # print('Small:', ref_st, ref_en, found_list[i][1], found_list[i][2])
     print(large, small)
     print(large_co, small_co)
 

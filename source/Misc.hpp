@@ -28,6 +28,23 @@ const int maxCluster = 10;
 const int matchScore = 2, mismatchScore = -2, gapPenalty = -2;
 const double overlap = 0.8;
 
+// Maximum chromosome size / 1000
+const int MAX_SZ = 1123456;
+
+const int BUCKET_SIZE = 1000;
+
+// if cluster has less than below (up + down), it is rejected
+const int MIN_SC_SUP = 3;
+
+const int MAX_NODES_IN_CLUSTER = 500;
+const int MAX_NODES_IN_BUCKET = 500;
+
+const int MIN_DEL_LEN = 30;
+const int MAX_DEL_LEN = 1000;
+
+const int MIN_DISC_CLUSTER_SUPPORT = 3;
+const int MAX_DISC_CLUSTER_DEL_LEN = 50000;
+
 struct DiscNode
 {
     int upStart, upEnd, downStart, downEnd;
@@ -51,9 +68,9 @@ struct SoftNode
     int refID;
     std::string refName;
     std::string scSeq, nscSeq;
-    bool down;
+    bool down, scAtRight;
 
-    SoftNode(int t_scPos, int t_refID, std::string t_refName, std::string t_scSeq, std::string t_nscSeq, bool t_down) : scPos(t_scPos), refID(t_refID), refName(t_refName), scSeq(t_scSeq), nscSeq(t_nscSeq), down(t_down) {}
+    SoftNode(int t_scPos, int t_refID, std::string t_refName, std::string t_scSeq, std::string t_nscSeq, bool t_down, bool t_scAtRight) : scPos(t_scPos), refID(t_refID), refName(t_refName), scSeq(t_scSeq), nscSeq(t_nscSeq), down(t_down), scAtRight(t_scAtRight) {}
 };
 
 struct SoftCluster
@@ -63,6 +80,24 @@ struct SoftCluster
 
     SoftCluster(SoftNode t_sn) : info(t_sn) { nodes.emplace_back(t_sn); }
 };
+
+inline bool SoftCmp(const SoftNode &a, const SoftNode &b)
+{
+    return a.scPos < b.scPos;
+}
+
+inline bool inBetween(const int &a, const int &b, const int &x)
+{
+    return a <= x && x <= b;
+}
+
+inline void getFileName(const std::string &filePath, std::string &outFilePath)
+{
+    std::string fileName = filePath.substr(filePath.find_last_of('/') + 1);
+    std::size_t dotLen = fileName.find_last_of('.');
+    std::string fileNameNoExt = fileName.substr(0, dotLen);
+    outFilePath += fileNameNoExt;
+}
 
 const int qualOffset = 33,
           minScQual = 10;
