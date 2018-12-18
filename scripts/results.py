@@ -1,19 +1,22 @@
 import subprocess
 
 FLAG_SVCLASSIFY = True
-FLAG_COV = True
+FLAG_COV = False
 FLAG_50 = False
-FLAG_SUPPORT = True
-VAL_SUPPORT = 5
+FLAG_SUPPORT = False
+VAL_LARGE_SUPPORT = 3
+VAL_SMALL_SUPPORT = 3
+ONLY_LARGE = False
+ONLY_SMALL = False
 
 # Reciprocal overlap
 RO = 0.5
 INP_COV = 30
 
 # Chromosomes to verify
-# verifyChr = ['12', '13', '14', '15', '17', '18', '19']
-verifyChr = ['19']
-# verifyChr = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22']
+# verifyChr = ['18']
+verifyChr = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11',
+             '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X']
 
 """
 This function normalizes chromosome name
@@ -72,7 +75,7 @@ def checkCoverage(x_list):
     x_st = x_list[1]
     x_en = x_list[2]
     cmd = "samtools depth -aa -r " + str(x_chr) + ":" + str(x_st) + "-" + str(x_en) \
-        + " /Users/alok/Data/30x/chr" + str(x_chr) \
+        + " /Users/alok/Data/30x/chr/" + str(x_chr) \
         + ".bam | awk '{ sum += $3; n++} END { if (n > 0) print sum/n; }'"
     cov = float(subprocess.check_output(
         cmd, shell=True).decode("utf-8") .replace('\n', ''))
@@ -85,31 +88,15 @@ def parse():
         ref = open('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt')
     else:
         ref = open('/Users/alok/Tools/indel-detect/scripts/gs-dgv.txt')
-    # inp = open('/Users/alok/tmp/my_del')
-    # inp = open('/Users/alok/Data/30x/SoftSV_19/deletions.txt')
-    # inp = open('/Users/alok/tmp/softsv_19/deletions_small.txt')
-    # inp = open('/Users/alok/tmp/softsv_19/all_dels.txt')
-    # lumpy
-    # inp = open('/Users/alok/Downloads/chr19-lumpy.txt')
-    # inp = open('/Users/alok/Downloads/lumpy.dels.txt')
-    # inp = open('/Users/alok/tmp/19_softsv/deletions_small.txt')
-    # my dels
-    # inp = open('/Users/alok/Downloads/dels')
-    # inp = open('/Users/alok/tmp/chr19_dels.txt')
-    # inp = open('/Users/alok/tmp/20Nov/my_19.txt')
-    # inp = open('/Users/alok/tmp/chr19_dels_small.txt')
-    # inp = open('/Users/alok/tmp/19_softsv/dels.txt')
-    # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels.txt')
-    # inp = open('/Users/alok/Tools/indel-detect/build/chr19_dels_small.txt')
-    # inp = open('/Users/alok/Tools/indel-detect/build/chr19.txt')
-    # inp = open('/Users/alok/Tools/indel-detect/build/chr19_disc_dels.txt')
-    # inp = open('/Users/alok/tmp/26Nov/chr19_soft_dels_small.txt')
-    # inp = open('/Users/alok/tmp/26Nov/chr19_disc_dels.txt')
-    # inp = open('/Users/alok/tmp/26Nov/chr19_dels.txt')
-    # inp = open('/Users/alok/tmp/30Nov/chr19_disc_dels.txt')
-    # inp = open('/Users/alok/tmp/Dec/5/chr19_soft_dels_small.txt')
-    # inp = open('/Users/alok/tmp/Dec/5/chr19_disc_dels.txt')
-    inp = open('/Users/alok/tmp/Dec/5/chr19.txt')
+
+    """ softsv """
+    # inp = open('/Users/alok/Data/30x/results/softsv.txt')
+    """ lumpy """
+    # inp = open('/Users/alok/Data/30x/results/lumpy_dels.txt')
+    """ my dels"""
+    # inp = open('/Users/alok/tmp/Dec/18/18_filter_deletions.txt')
+    # inp = open('/Users/alok/tmp/Dec/18/18.txt')
+    inp = open('/Users/alok/tmp/Dec/18/dels.txt')
     ref_list = []
     num_pred = 0
 
@@ -117,7 +104,16 @@ def parse():
         ref_l = ref_line.split()
         if ref_l[0] not in verifyChr:
             continue
-        here_list = [modChr(ref_l[0]), int(ref_l[1]), int(ref_l[2])]
+        ref_st = int(ref_l[1])
+        ref_en = int(ref_l[2])
+        ref_sz = ref_en - ref_st + 1
+        if ONLY_LARGE:
+            if ref_sz < 500:
+                continue
+        if ONLY_SMALL:
+            if ref_sz >= 500:
+                continue
+        here_list = [modChr(ref_l[0]), ref_st, ref_en]
         ref_list.append(here_list)
 
     found_list = [[False, 0, 0]]*len(ref_list)
@@ -140,8 +136,12 @@ def parse():
             sup1 = int(inp_l[4])
             sup2 = int(inp_l[5])
             if FLAG_SUPPORT:
-                if sup1 + sup2 < VAL_SUPPORT:
-                    continue
+                if inp_en - inp_st < 500:
+                    if sup2 < VAL_SMALL_SUPPORT:
+                        continue
+                else:
+                    if sup1 + sup2 < VAL_LARGE_SUPPORT:
+                        continue
 
         if FLAG_50:
             if inp_en - inp_st + 1 < 50:
@@ -191,12 +191,20 @@ def parse():
             large += 1
             if found_list[i][0]:
                 large_co += 1
-                # print('Large:', ref_st, ref_en, found_list[i][1], found_list[i][2])
+            # else:
+            #     print('Large:', ref_st, ref_en,
+            #           found_list[i][1], found_list[i][2])
+            # print('chr' + verifyChr[0] + ":" + str(ref_st) + "-" +
+            #       str(ref_en), ref_len, found_list[i][0])
         else:
             small += 1
             if found_list[i][0]:
                 small_co += 1
-                # print('Small:', ref_st, ref_en, found_list[i][1], found_list[i][2])
+            # else:
+            #     print('Small:', ref_st, ref_en,
+            #           found_list[i][1], found_list[i][2])
+            # print('chr' + verifyChr[0] + ":" + str(ref_st) + "-" +
+            #       str(ref_en), ref_len, found_list[i][0])
     print(large, small)
     print(large_co, small_co)
 

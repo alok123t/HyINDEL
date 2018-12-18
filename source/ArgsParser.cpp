@@ -93,11 +93,10 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
     args::ValueFlag<int> insSz(groupInsertSize, "insSz", "Insert Size", {'s', "insSz"});
     args::ValueFlag<int> stdDev(groupInsertSize, "stdDev", "Standard Deviation", {'d', "stdDev"});
 
-    args::Group groupFilteredInput(parser, "Discordant and Soft clip file paths", args::Group::Validators::AllOrNone);
-    args::ValueFlag<std::string> inpFilterDiscPaths(groupFilteredInput, "discFiles", "Discordant File Paths", {"disc"});
-    args::ValueFlag<std::string> inpFilterSCPaths(groupFilteredInput, "softFiles", "Softclip File Paths", {"soft"});
+    args::Group groupInputFiles(parser, "Input Files", args::Group::Validators::All);
+    args::ValueFlag<std::string> inpFilePaths(groupInputFiles, "inpFiles", "Input Files", {'i', "inp"});
 
-    args::Group groupOutputFolder(parser, "Output folder name", args::Group::Validators::AllOrNone);
+    args::Group groupOutputFolder(parser, "Output Folder", args::Group::Validators::AllOrNone);
     args::ValueFlag<std::string> outFolderName(groupOutputFolder, "outFolder", "Output Folder", {'o', "out"});
 
     args::Group groupThreads(parser, "Threads", args::Group::Validators::AllOrNone);
@@ -131,10 +130,9 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
     ap.insSz = args::get(insSz);
     ap.stdDev = args::get(stdDev);
 
-    if (inpFilterDiscPaths && inpFilterSCPaths)
+    if (inpFilePaths)
     {
-        splitFilePaths(args::get(inpFilterDiscPaths), ap.discFilePaths);
-        splitFilePaths(args::get(inpFilterSCPaths), ap.softFilePaths);
+        splitFilePaths(args::get(inpFilePaths), ap.inpFilePaths);
     }
 
     if (outFolderName)

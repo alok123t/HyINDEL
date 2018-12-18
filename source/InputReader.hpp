@@ -3,8 +3,6 @@
 
 #include "VariantDetect.hpp"
 
-const std::string indexExt = ".bai";
-
-void processInput(const std::string discPath, const std::string softPath, const int mean, const int stdDev, const std::string folderPath);
+void processInput(const std::string inpFilePath, const int mean, const int stdDev, const std::string outFolderPath, const bool verbose);
 
 #endif // INPUTREADER_HPP

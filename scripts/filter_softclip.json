@@ -1,9 +1,0 @@
-{
-    "filters": [
-        {
-            "isMapped": "true",
-            "isMateMapped": "true",
-            "cigar": "*S*"
-        }
-    ]
-}

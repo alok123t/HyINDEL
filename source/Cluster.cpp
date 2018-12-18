@@ -19,9 +19,9 @@ int main(int argc, char const *argv[])
 		std::cerr << "Standard deviation: " << ap.stdDev << '\n';
 
 		std::cerr << "Input files: " << '\n';
-		for (int i = 0; i < ap.discFilePaths.size(); ++i)
+		for (std::string fPath : ap.inpFilePaths)
 		{
-			std::cerr << '\t' << ap.discFilePaths[i] << '\t' << ap.softFilePaths[i] << '\n';
+			std::cerr << '\t' << fPath << '\n';
 		}
 
 		std::cerr << "Output folder: " << ap.outFolderPath << '\n';
@@ -33,14 +33,14 @@ int main(int argc, char const *argv[])
 
 	std::vector<std::shared_ptr<transwarp::task<void>>> tasks;
 
-	for (int i = 0; i < ap.discFilePaths.size(); ++i)
+	for (std::string fPath : ap.inpFilePaths)
 	{
-		auto discTask = transwarp::make_value_task(ap.discFilePaths[i]);
-		auto softTask = transwarp::make_value_task(ap.softFilePaths[i]);
+		auto inpFileTask = transwarp::make_value_task(fPath);
 		auto meanTask = transwarp::make_value_task(ap.insSz);
 		auto stdDevTask = transwarp::make_value_task(ap.stdDev);
 		auto outFolderTask = transwarp::make_value_task(ap.outFolderPath);
-		auto inputTask = transwarp::make_task(transwarp::consume, processInput, discTask, softTask, meanTask, stdDevTask, outFolderTask);
+		auto verboseTask = transwarp::make_value_task(ap.verbose);
+		auto inputTask = transwarp::make_task(transwarp::consume, processInput, inpFileTask, meanTask, stdDevTask, outFolderTask, verboseTask);
 
 		tasks.emplace_back(inputTask);
 	}
@@ -56,9 +56,12 @@ int main(int argc, char const *argv[])
 	}
 
 	std::chrono::steady_clock::time_point timeEnd = std::chrono::steady_clock::now();
-	std::cerr << "Time taken: " << std::setprecision(1)
-			  << (std::chrono::duration_cast<std::chrono::seconds>(timeEnd - timeStart).count())
-			  << " secs" << '\n';
+	if (ap.verbose)
+	{
+		std::cerr << "Time taken: " << std::setprecision(1)
+				  << (std::chrono::duration_cast<std::chrono::seconds>(timeEnd - timeStart).count())
+				  << " secs" << '\n';
+	}
 
 	return EXIT_SUCCESS;
 }
