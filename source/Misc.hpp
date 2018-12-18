@@ -19,6 +19,14 @@
 // task concurrency api
 #include "transwarp.h"
 
+const bool debug = false;
+
+const std::string indexExt = ".bai";
+
+const double RO_MERGE = 0.5;
+
+const int MIN_ALN_QUAL = 0;
+
 const int minSCLen = 10;
 const int bpTol = 5;
 const int maxSc = 20;
@@ -44,6 +52,39 @@ const int MAX_DEL_LEN = 1000;
 
 const int MIN_DISC_CLUSTER_SUPPORT = 3;
 const int MAX_DISC_CLUSTER_DEL_LEN = 50000;
+
+const int MAX_SPLIT_LEN = 512345;
+const int MIN_SPLIT_LEN = 51;
+
+const std::string COMMA = ",";
+const std::string SEMICOLON = ";";
+
+struct OutNode
+{
+    std::string chr;
+    int st, en, sz;
+    int supDisc, supSR, supSC;
+    OutNode(std::string t_chr, int t_st, int t_en, int t_sz, int t_supDisc, int t_supSR, int t_supSC) : chr(t_chr), st(t_st), en(t_en), sz(t_sz), supDisc(t_supDisc), supSR(t_supSR), supSC(t_supSC) {}
+};
+
+struct SplitNode
+{
+    int st, en;
+    int refID;
+    SplitNode(int t_st, int t_en, int t_refID) : st(t_st), en(t_en), refID(t_refID) {}
+};
+
+struct SplitCluster
+{
+    SplitNode info;
+    std::vector<SplitNode> nodes;
+    SplitCluster(SplitNode t_sn) : info(t_sn) { nodes.emplace_back(t_sn); }
+};
+
+inline bool SplitCmp(const SplitCluster &a, const SplitCluster &b)
+{
+    return a.info.st < b.info.st;
+}
 
 struct DiscNode
 {
@@ -97,6 +138,22 @@ inline void getFileName(const std::string &filePath, std::string &outFilePath)
     std::size_t dotLen = fileName.find_last_of('.');
     std::string fileNameNoExt = fileName.substr(0, dotLen);
     outFilePath += fileNameNoExt;
+}
+
+inline bool openInput(const std::string filePath, BamTools::BamReader &br)
+{
+    if (!br.Open(filePath))
+    {
+        std::cerr << "ERROR:BamTools Could not open " << filePath << '\n';
+        return false;
+    }
+    std::string indexPath = filePath + indexExt;
+    if (!br.OpenIndex(indexPath))
+    {
+        std::cerr << "ERROR:BamTools Could not open index " << indexPath << '\n';
+        return false;
+    }
+    return true;
 }
 
 const int qualOffset = 33,

@@ -2,6 +2,7 @@
 
 const std::string suffixDels = "_dels.txt";
 const std::string suffixDelsSmall = "_dels_small.txt";
+const std::string suffixDelsLargeSplit = "_dels_split.txt";
 
 void parseOutput(const std::string outFilePrefix,
 				 const std::vector<std::vector<std::string>> &output,
@@ -13,6 +14,8 @@ void parseOutput(const std::string outFilePrefix,
 			return suffixDels;
 		else if (outputType == 1)
 			return suffixDelsSmall;
+		else if (outputType == 2)
+			return suffixDelsLargeSplit;
 		else
 			return std::string();
 	};
@@ -29,6 +32,21 @@ void parseOutput(const std::string outFilePrefix,
 				ofs << '\t';
 		}
 		ofs << '\n';
+	}
+
+	ofs.close();
+}
+
+void parseOutputN(const std::string outFilePrefix, const std::vector<OutNode> &output)
+{
+	std::ofstream ofs;
+	std::string outFileDels = outFilePrefix + "_deletions.txt";
+	ofs.open(outFileDels);
+
+	ofs << "Chr" << '\t' << "Start" << '\t' << "End" << '\t' << "Size" << '\t' << "Support (PE)" << '\t' << "Support (SR)" << '\t' << "Support (SC)" << '\n';
+	for (OutNode out : output)
+	{
+		ofs << out.chr << '\t' << out.st << '\t' << out.en << '\t' << out.sz << '\t' << out.supDisc << '\t' << out.supSR << '\t' << out.supSC << '\n';
 	}
 
 	ofs.close();

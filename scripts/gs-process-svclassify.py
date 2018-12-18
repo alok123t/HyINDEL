@@ -1,18 +1,16 @@
-inp = open('/Users/alok/Data/GS/NA12878_svs.vcf')
+inp = open(
+    '/Users/alok/Tools/indel-detect/scripts/Personalis_1000_Genomes_deduplicated_deletions.bed')
 out = open('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt', 'w')
 
 for l in inp:
-    if l[0] == '#':
-        continue
     line = l.split('\t')
-    if line[6] != "PASS":
+    if line[0] == 'Chr':
         continue
-    if line[4] != "<DEL>":
-        continue
-    st = line[1]
-    en = line[7].split(';')[0].split('=')[1]
-    sz = int(en) - int(st) + 1
-    s = line[0] + '\t' + st + '\t' + en + '\t' + str(sz) + '\n'
+    l_chr = line[0]
+    l_st = int(line[1])
+    l_en = int(line[2].replace('\n', ''))
+    sz = int(l_en) - int(l_st) + 1
+    s = l_chr + '\t' + str(l_st) + '\t' + str(l_en) + '\t' + str(sz) + '\n'
     out.write(s)
 
 inp.close()

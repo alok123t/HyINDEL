@@ -20,8 +20,8 @@ def go(fname):
 
 
 def main():
-    go('gs-svclassify.txt')
-    go('gs-dgv.txt')
+    go('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt')
+    go('/Users/alok/Tools/indel-detect/scripts/gs-dgv.txt')
 
 
 if __name__ == '__main__':
