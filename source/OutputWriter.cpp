@@ -1,6 +1,6 @@
 #include "OutputWriter.hpp"
 
-const std::string suffixDels = "_dels.txt";
+const std::string suffixDels = "_dels_large.txt";
 const std::string suffixDelsSmall = "_dels_small.txt";
 const std::string suffixDelsLargeSplit = "_dels_split.txt";
 
@@ -22,7 +22,7 @@ void parseOutput(const std::string outFilePrefix,
 	std::string outFileDels = outFilePrefix + suffixFn(outputType);
 	ofs.open(outFileDels);
 
-	ofs << "Chromosome" << '\t' << "Start" << '\t' << "End" << '\t' << "Size" << '\t' << "Support (PE)" << '\t' << "Support (SC)" << '\n';
+	ofs << "#Chromosome" << '\t' << "Start" << '\t' << "End" << '\t' << "Size" << '\t' << "Support (PE)" << '\t' << "Support (SC)" << '\n';
 	for (int i = 0; i < output.size(); ++i)
 	{
 		for (int j = 0; j < output.at(i).size(); ++j)

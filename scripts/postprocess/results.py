@@ -2,21 +2,18 @@ import subprocess
 
 FLAG_SVCLASSIFY = True
 FLAG_COV = False
-FLAG_50 = False
+FLAG_50 = True
 FLAG_SUPPORT = False
-VAL_LARGE_SUPPORT = 3
-VAL_SMALL_SUPPORT = 3
+VAL_LARGE_SUPPORT = 8
+VAL_SMALL_SUPPORT = 5
 ONLY_LARGE = False
 ONLY_SMALL = False
+FLAG_MAPPABILITY = False
+FILTER_MAPPABILITY = 0.75
 
 # Reciprocal overlap
 RO = 0.5
 INP_COV = 30
-
-# Chromosomes to verify
-# verifyChr = ['18']
-verifyChr = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11',
-             '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X']
 
 """
 This function normalizes chromosome name
@@ -75,7 +72,7 @@ def checkCoverage(x_list):
     x_st = x_list[1]
     x_en = x_list[2]
     cmd = "samtools depth -aa -r " + str(x_chr) + ":" + str(x_st) + "-" + str(x_en) \
-        + " /Users/alok/Data/30x/chr/" + str(x_chr) \
+        + " /Volumes/HDD/Data/30x/chr/" + str(x_chr) \
         + ".bam | awk '{ sum += $3; n++} END { if (n > 0) print sum/n; }'"
     cov = float(subprocess.check_output(
         cmd, shell=True).decode("utf-8") .replace('\n', ''))
@@ -83,20 +80,31 @@ def checkCoverage(x_list):
     return cov <= INP_COV
 
 
-def parse():
+def checkMap(st, en, sc):
+    map_st = int(st / 100)
+    map_en = int(en / 100)
+    here = []
+    for i in range(map_st-1, map_en):
+        here.append(sc[i])
+    map_sc = 1.0 * sum(here) / len(here)
+    # print(st, ref_sz, map_sc, here)
+    if map_sc < FILTER_MAPPABILITY:
+        return True
+
+
+def parse(fName, verifyChr):
+    print(verifyChr, fName)
     if FLAG_SVCLASSIFY:
         ref = open('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt')
     else:
         ref = open('/Users/alok/Tools/indel-detect/scripts/gs-dgv.txt')
 
-    """ softsv """
-    # inp = open('/Users/alok/Data/30x/results/softsv.txt')
-    """ lumpy """
-    # inp = open('/Users/alok/Data/30x/results/lumpy_dels.txt')
-    """ my dels"""
-    # inp = open('/Users/alok/tmp/Dec/18/18_filter_deletions.txt')
-    # inp = open('/Users/alok/tmp/Dec/18/18.txt')
-    inp = open('/Users/alok/tmp/Dec/18/dels.txt')
+    inp = open(fName)
+
+    mapFile = open('/Users/alok/Data/mappability_hg19/chr18.dat.txt')
+    lines_map = mapFile.readlines()
+    sc = [float(x.strip()) for x in lines_map]
+
     ref_list = []
     num_pred = 0
 
@@ -107,6 +115,9 @@ def parse():
         ref_st = int(ref_l[1])
         ref_en = int(ref_l[2])
         ref_sz = ref_en - ref_st + 1
+        if FLAG_MAPPABILITY:
+            if checkMap(ref_st, ref_en, sc):
+                continue
         if ONLY_LARGE:
             if ref_sz < 500:
                 continue
@@ -132,6 +143,9 @@ def parse():
         here_list = [inp_chr, inp_st, inp_en]
         sup1 = 0
         sup2 = 0
+        if FLAG_MAPPABILITY:
+            if checkMap(inp_st, inp_en, sc):
+                continue
         if len(inp_l) >= 6:
             sup1 = int(inp_l[4])
             sup2 = int(inp_l[5])
@@ -159,6 +173,7 @@ def parse():
 
     ref.close()
     inp.close()
+    mapFile.close()
 
     num_ref = len(ref_list)
     num_inp = num_pred
@@ -207,10 +222,28 @@ def parse():
             #       str(ref_en), ref_len, found_list[i][0])
     print(large, small)
     print(large_co, small_co)
+    print('---------------')
 
 
 def main():
-    parse()
+    f_softsv = '/Users/alok/Data/30x/results/softsv.txt'
+    f_lumpy = '/Users/alok/Data/30x/results/lumpy_dels.txt'
+    f_our = '/Users/alok/tmp/Dec/20/all.bed'
+    # f_our = '/Users/alok/Tools/indel-detect/build/1_merge.bed'
+
+    allChr = [['18']]
+    # allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
+    #     '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
+
+    # for curChr in allChr:
+    #     # parse(f_softsv, curChr)
+    #     parse(f_lumpy, curChr)
+    #     parse(f_our, curChr)
+
+    wholeGenom = [x for sublist in allChr for x in sublist]
+    # parse(f_softsv, wholeGenom)
+    # parse(f_lumpy, wholeGenom)
+    parse(f_our, wholeGenom)
 
     # returns True
     # print(checkOverlap('1', '1', [100, 200], [130, 201]))
