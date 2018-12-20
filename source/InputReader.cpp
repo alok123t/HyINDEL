@@ -183,6 +183,9 @@ void largeDeletions(const std::vector<SplitCluster> &splitClusters, const std::s
 	std::vector<DiscCluster> clusters, filteredClusters;
 	readDiscordant(br, mean, stdDev, clusters);
 
+	std::string inpFname;
+	getFileName(br.GetFilename(), inpFname);
+
 	for (int i = 0; i < clusters.size(); ++i)
 	{
 		DiscNode dr = clusters[i].info;
@@ -191,7 +194,7 @@ void largeDeletions(const std::vector<SplitCluster> &splitClusters, const std::s
 			filteredClusters.emplace_back(clusters[i]);
 		}
 	}
-	std::cerr << "Large deletions cluster done\n";
+	std::cerr << inpFname << " Large deletions cluster done\n";
 
 	br.Close();
 
@@ -199,7 +202,7 @@ void largeDeletions(const std::vector<SplitCluster> &splitClusters, const std::s
 	std::vector<std::vector<std::string>> outputDelsLarge;
 	std::vector<OutNode> outputDelsSplitLarge;
 	DelsLarge(inpFilePath, filteredClusters, outputDelsLarge);
-	std::cerr << "Large deletions overlap done\n";
+	std::cerr << inpFname << " Large deletions overlap done\n";
 
 	// DelsLargeSplit(ref, clusters, splitClusters, outputDelsSplitLarge);
 
@@ -207,7 +210,7 @@ void largeDeletions(const std::vector<SplitCluster> &splitClusters, const std::s
 	std::string outputFile = folderPath;
 	getFileName(inpFilePath, outputFile);
 	parseOutput(outputFile, outputDelsLarge, 0);
-	parseOutputN(outputFile, outputDelsSplitLarge);
+	// parseOutputN(outputFile, outputDelsSplitLarge);
 }
 
 void large(BamTools::RefVector &ref, const std::vector<DiscCluster> &discClusters, const std::vector<SplitCluster> &splitClusters, const std::string inpFilePath, const std::string folderPath)
@@ -877,12 +880,12 @@ void processInput(const std::string inpFilePath, const int mean, const int stdDe
 	std::vector<SplitCluster> srClusters;
 	std::vector<std::vector<SoftCluster>> scClustersUp(MAX_SZ), scClustersDown(MAX_SZ);
 
-	readInput(br, ref, bpRegion, verbose, discClusters, srClusters, scClustersUp, scClustersDown);
+	// readInput(br, ref, bpRegion, verbose, discClusters, srClusters, scClustersUp, scClustersDown);
 
 	br.Close();
 
-	large(ref, discClusters, srClusters, inpFilePath, outFolderPath);
-	// largeDeletions(splitClusters, inpFilePath, mean, stdDev, outFolderPath);
+	// large(ref, discClusters, srClusters, inpFilePath, outFolderPath);
+	largeDeletions(srClusters, inpFilePath, mean, stdDev, outFolderPath);
 
-	smallDeletions(inpFilePath, outFolderPath);
+	// smallDeletions(inpFilePath, outFolderPath);
 }
