@@ -847,7 +847,7 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 		std::cerr << "SC nodes: " << scNodes.size() << '\n';
 	}
 
-	clusterDisc(discNodes, discClusters);
+	// clusterDisc(discNodes, discClusters);
 	clusterSR(srNodes, srClusters);
 	// clusterSC(scNodes, scClustersUp, scClustersDown);
 
@@ -880,12 +880,13 @@ void processInput(const std::string inpFilePath, const int mean, const int stdDe
 	std::vector<SplitCluster> srClusters;
 	std::vector<std::vector<SoftCluster>> scClustersUp(MAX_SZ), scClustersDown(MAX_SZ);
 
-	// readInput(br, ref, bpRegion, verbose, discClusters, srClusters, scClustersUp, scClustersDown);
+	readInput(br, ref, bpRegion, verbose, discClusters, srClusters, scClustersUp, scClustersDown);
 
 	br.Close();
 
-	// large(ref, discClusters, srClusters, inpFilePath, outFolderPath);
+	large(ref, discClusters, srClusters, inpFilePath, outFolderPath);
+
 	largeDeletions(srClusters, inpFilePath, mean, stdDev, outFolderPath);
 
-	// smallDeletions(inpFilePath, outFolderPath);
+	smallDeletions(inpFilePath, outFolderPath);
 }

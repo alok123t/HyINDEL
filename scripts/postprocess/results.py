@@ -95,9 +95,11 @@ def checkMap(st, en, sc):
 def parse(fName, verifyChr):
     print(verifyChr, fName)
     if FLAG_SVCLASSIFY:
-        ref = open('/Users/alok/Tools/indel-detect/scripts/gs-svclassify.txt')
+        ref = open(
+            '/Users/alok/Tools/indel-detect/scripts/GS/gs-svclassify.txt')
     else:
-        ref = open('/Users/alok/Tools/indel-detect/scripts/gs-dgv.txt')
+        ref = open(
+            '/Users/alok/Tools/indel-detect/scripts/GS/gs-dgv.txt')
 
     inp = open(fName)
 
@@ -145,6 +147,12 @@ def parse(fName, verifyChr):
         sup2 = 0
         if FLAG_MAPPABILITY:
             if checkMap(inp_st, inp_en, sc):
+                continue
+        if ONLY_LARGE:
+            if inp_en - inp_st + 1 < 500:
+                continue
+        if ONLY_SMALL:
+            if inp_en - inp_st + 1 >= 500:
                 continue
         if len(inp_l) >= 6:
             sup1 = int(inp_l[4])
@@ -228,12 +236,13 @@ def parse(fName, verifyChr):
 def main():
     f_softsv = '/Users/alok/Data/30x/results/softsv.txt'
     f_lumpy = '/Users/alok/Data/30x/results/lumpy_dels.txt'
-    f_our = '/Users/alok/tmp/Dec/20/all.bed'
-    # f_our = '/Users/alok/Tools/indel-detect/build/1_merge.bed'
+    f_split = '/Users/alok/tmp/Dec/20/all_split.bed'
+    f_merge = '/Users/alok/tmp/Dec/20/merge_merge.bed'
+    f_sc = '/Users/alok/Data/30x/results/all.bed'
 
-    allChr = [['18']]
-    # allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
-    #     '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
+    # allChr = [['4']]
+    allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
+        '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
 
     # for curChr in allChr:
     #     # parse(f_softsv, curChr)
@@ -241,9 +250,11 @@ def main():
     #     parse(f_our, curChr)
 
     wholeGenom = [x for sublist in allChr for x in sublist]
-    # parse(f_softsv, wholeGenom)
-    # parse(f_lumpy, wholeGenom)
-    parse(f_our, wholeGenom)
+    parse(f_softsv, wholeGenom)
+    parse(f_lumpy, wholeGenom)
+    parse(f_sc, wholeGenom)
+    parse(f_split, wholeGenom)
+    parse(f_merge, wholeGenom)
 
     # returns True
     # print(checkOverlap('1', '1', [100, 200], [130, 201]))
