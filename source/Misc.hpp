@@ -19,9 +19,11 @@
 // task concurrency api
 #include "transwarp.h"
 
-const bool debug = false;
+const bool debug = true;
 
 const std::string indexExt = ".bai";
+
+const std::string excludeFileName = "remove_chr_windows.bed";
 
 const double RO_MERGE = 0.5;
 

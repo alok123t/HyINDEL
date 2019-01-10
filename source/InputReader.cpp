@@ -208,7 +208,6 @@ void largeDeletions(const std::vector<SplitCluster> &splitClusters, const std::s
 
 	// print deletion to file
 	std::string outputFile = folderPath;
-	getFileName(inpFilePath, outputFile);
 	parseOutput(outputFile, outputDelsLarge, 0);
 	// parseOutputN(outputFile, outputDelsSplitLarge);
 }
@@ -221,7 +220,6 @@ void large(BamTools::RefVector &ref, const std::vector<DiscCluster> &discCluster
 
 	// print deletion to file
 	std::string outputFile = folderPath;
-	getFileName(inpFilePath, outputFile);
 	parseOutputN(outputFile, outputDelsSplitLarge);
 }
 
@@ -458,7 +456,6 @@ void smallDeletions(const std::string softPath, const std::string folderPath)
 	}
 
 	std::string outputFile = folderPath;
-	getFileName(softPath, outputFile);
 
 	std::vector<SoftNode> nodes;
 	readSoft(softBr, nodes);
@@ -819,7 +816,29 @@ void addSC(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vec
 	nodes.emplace_back(sn);
 }
 
-void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const int &bpRegion, const bool verbose, std::vector<DiscCluster> &discClusters, std::vector<SplitCluster> &srClusters, std::vector<std::vector<SoftCluster>> &scClustersUp, std::vector<std::vector<SoftCluster>> &scClustersDown)
+bool inExclude(long pos, std::vector<std::pair<long, long>> v)
+{
+	int low = 0, high = v.size() - 1;
+	int it = -1;
+	while (low <= high)
+	{
+		int mid = (low + high) >> 1;
+		if (pos < v[mid].first)
+			high = mid - 1;
+		else
+		{
+			it = mid;
+			low = mid + 1;
+		}
+	}
+	if (it != -1 && v[it].first <= pos && pos <= v[it].second)
+	{
+		return true;
+	}
+	return false;
+}
+
+void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const int &bpRegion, const bool verbose, const std::map<std::string, std::vector<std::pair<long, long>>> &exRegions, std::vector<DiscCluster> &discClusters, std::vector<SplitCluster> &srClusters, std::vector<std::vector<SoftCluster>> &scClustersUp, std::vector<std::vector<SoftCluster>> &scClustersDown)
 {
 	std::vector<DiscNode> discNodes;
 	std::vector<SplitNode> srNodes;
@@ -833,6 +852,9 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 			continue;
 		// both pairs should be on same chr
 		if (aln.RefID != aln.MateRefID)
+			continue;
+
+		if (inExclude(aln.Position, exRegions.at(ref.at(aln.RefID).RefName)))
 			continue;
 
 		addDisc(aln, bpRegion, discNodes);
@@ -864,8 +886,39 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 	}
 }
 
+void openExcludeRegions(const std::string fPath, std::map<std::string, std::vector<std::pair<long, long>>> &exRegions)
+{
+	std::string exChr;
+	long exSt, exEn, exCount;
+	double exCov;
+
+	std::fstream fs;
+	fs.open(fPath, std::fstream::in);
+	if (!fs.is_open())
+	{
+		std::cerr << "Could not find exclude regions file at: " << fPath << '\n';
+	}
+
+	while (fs >> exChr >> exSt >> exEn >> exCount >> exCov)
+	{
+		exRegions[exChr].emplace_back(std::make_pair(exSt, exEn));
+	}
+
+	fs.close();
+
+	// sort vector for each chr
+	for (auto reg : exRegions)
+	{
+		std::sort(exRegions.at(reg.first).begin(), exRegions.at(reg.first).end());
+	}
+}
+
 void processInput(const std::string inpFilePath, const int mean, const int stdDev, const std::string outFolderPath, const bool verbose)
 {
+	std::map<std::string, std::vector<std::pair<long, long>>> exRegions;
+	std::string excludeFilePath = outFolderPath + excludeFileName;
+	openExcludeRegions(excludeFilePath, exRegions);
+
 	BamTools::BamReader br;
 	if (!openInput(inpFilePath, br))
 	{
@@ -880,7 +933,7 @@ void processInput(const std::string inpFilePath, const int mean, const int stdDe
 	std::vector<SplitCluster> srClusters;
 	std::vector<std::vector<SoftCluster>> scClustersUp(MAX_SZ), scClustersDown(MAX_SZ);
 
-	readInput(br, ref, bpRegion, verbose, discClusters, srClusters, scClustersUp, scClustersDown);
+	readInput(br, ref, bpRegion, verbose, exRegions, discClusters, srClusters, scClustersUp, scClustersDown);
 
 	br.Close();
 

@@ -1,8 +1,8 @@
 #include "OutputWriter.hpp"
 
-const std::string suffixDels = "_dels_large.txt";
-const std::string suffixDelsSmall = "_dels_small.txt";
-const std::string suffixDelsLargeSplit = "_dels_split.txt";
+const std::string suffixDels = "tmp1_dels_large.txt";
+const std::string suffixDelsSmall = "tmp1_dels_small.txt";
+const std::string suffixDelsLargeSplit = "tmp1_dels_split.txt";
 
 void parseOutput(const std::string outFilePrefix,
 				 const std::vector<std::vector<std::string>> &output,
@@ -40,10 +40,10 @@ void parseOutput(const std::string outFilePrefix,
 void parseOutputN(const std::string outFilePrefix, const std::vector<OutNode> &output)
 {
 	std::ofstream ofs;
-	std::string outFileDels = outFilePrefix + "_deletions.txt";
+	std::string outFileDels = outFilePrefix + suffixDelsLargeSplit;
 	ofs.open(outFileDels);
 
-	ofs << "Chr" << '\t' << "Start" << '\t' << "End" << '\t' << "Size" << '\t' << "Support (PE)" << '\t' << "Support (SR)" << '\t' << "Support (SC)" << '\n';
+	ofs << "#Chr" << '\t' << "Start" << '\t' << "End" << '\t' << "Size" << '\t' << "Support (PE)" << '\t' << "Support (SR)" << '\t' << "Support (SC)" << '\n';
 	for (OutNode out : output)
 	{
 		ofs << out.chr << '\t' << out.st << '\t' << out.en << '\t' << out.sz << '\t' << out.supDisc << '\t' << out.supSR << '\t' << out.supSC << '\n';
