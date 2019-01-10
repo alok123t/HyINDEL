@@ -10,6 +10,7 @@ ONLY_LARGE = False
 ONLY_SMALL = False
 FLAG_MAPPABILITY = False
 FILTER_MAPPABILITY = 0.75
+SPLIT_LARGE = 500
 
 # Reciprocal overlap
 RO = 0.5
@@ -121,10 +122,10 @@ def parse(fName, verifyChr):
             if checkMap(ref_st, ref_en, sc):
                 continue
         if ONLY_LARGE:
-            if ref_sz < 500:
+            if ref_sz < SPLIT_LARGE:
                 continue
         if ONLY_SMALL:
-            if ref_sz >= 500:
+            if ref_sz >= SPLIT_LARGE:
                 continue
         here_list = [modChr(ref_l[0]), ref_st, ref_en]
         ref_list.append(here_list)
@@ -149,16 +150,16 @@ def parse(fName, verifyChr):
             if checkMap(inp_st, inp_en, sc):
                 continue
         if ONLY_LARGE:
-            if inp_en - inp_st + 1 < 500:
+            if inp_en - inp_st + 1 < SPLIT_LARGE:
                 continue
         if ONLY_SMALL:
-            if inp_en - inp_st + 1 >= 500:
+            if inp_en - inp_st + 1 >= SPLIT_LARGE:
                 continue
         if len(inp_l) >= 6:
             sup1 = int(inp_l[4])
             sup2 = int(inp_l[5])
             if FLAG_SUPPORT:
-                if inp_en - inp_st < 500:
+                if inp_en - inp_st < SPLIT_LARGE:
                     if sup2 < VAL_SMALL_SUPPORT:
                         continue
                 else:
@@ -194,12 +195,11 @@ def parse(fName, verifyChr):
     print('Inp Total: ' + str(num_inp))
     print('Found: ' + str(num_true))
 
-    precision = float(num_true/num_inp)
-    recall = float(num_true / num_ref)
-    f_score = float(2*precision*recall/(precision+recall))
-
+    precision = float(1.0*num_true/num_inp)
+    recall = float(1.0*num_true / num_ref)
     print('Precision: %.3f' % precision)
     print('Recall: %.3f' % recall)
+    f_score = float(2.0*precision*recall/(precision+recall))
     print('F-score: %.3f' % f_score)
 
     large = 0
@@ -210,7 +210,7 @@ def parse(fName, verifyChr):
         ref_st = int(ref_list[i][1])
         ref_en = int(ref_list[i][2])
         ref_len = ref_en - ref_st + 1
-        if ref_len > 500:
+        if ref_len > SPLIT_LARGE:
             large += 1
             if found_list[i][0]:
                 large_co += 1
@@ -235,14 +235,17 @@ def parse(fName, verifyChr):
 
 def main():
     f_softsv = '/Users/alok/Data/30x/results/softsv.txt'
-    f_lumpy = '/Users/alok/Data/30x/results/lumpy_dels.txt'
-    f_split = '/Users/alok/tmp/Dec/20/all_split.bed'
-    f_merge = '/Users/alok/tmp/Dec/20/merge_merge.bed'
+    # f_lumpy = '/Users/alok/tmp/2019/Jan/4/dels-lumpy.txt'
+    f_split = '/Users/alok/tmp/2018/Dec/20/all_split.bed'
+    f_merge = '/Users/alok/tmp/2018/Dec/20/merge_merge.bed'
     f_sc = '/Users/alok/Data/30x/results/all.bed'
+    f_tiddit = '/Users/alok/Data/30x/results/tiddit/noins.txt'
+    f_mq_18 = '/Users/alok/tmp/2019/Jan/10/18_mq_20/deletions.bed'
+    f_manta = '/Users/alok/Data/30x/results/manta.txt'
 
-    # allChr = [['4']]
-    allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
-        '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
+    allChr = [['18']]
+    # allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
+    #     '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
 
     # for curChr in allChr:
     #     # parse(f_softsv, curChr)
@@ -250,11 +253,14 @@ def main():
     #     parse(f_our, curChr)
 
     wholeGenom = [x for sublist in allChr for x in sublist]
-    parse(f_softsv, wholeGenom)
-    parse(f_lumpy, wholeGenom)
-    parse(f_sc, wholeGenom)
-    parse(f_split, wholeGenom)
+    # parse(f_softsv, wholeGenom)
+    # parse(f_lumpy, wholeGenom)
+    # parse(f_sc, wholeGenom)
+    # parse(f_split, wholeGenom)
     parse(f_merge, wholeGenom)
+    parse(f_mq_18, wholeGenom)
+    parse(f_tiddit, wholeGenom)
+    # parse(f_manta, wholeGenom)
 
     # returns True
     # print(checkOverlap('1', '1', [100, 200], [130, 201]))
