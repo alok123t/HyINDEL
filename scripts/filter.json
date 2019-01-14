@@ -17,7 +17,11 @@
             "cigar": "*H*",
             "isMapped": "true",
             "isMateMapped": "true"
+        },
+        {
+            "id": "isHighQuality",
+            "mapQuality": ">=20"
         }
     ],
-    "rule": " hasSoftClip | hasHardClip | isDiscordant "
+    "rule": " (hasSoftClip | hasHardClip | isDiscordant) & isHighQuality "
 }

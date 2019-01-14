@@ -19,20 +19,37 @@
 // task concurrency api
 #include "transwarp.h"
 
-const bool debug = true;
+const bool debug = false;
 
 const std::string indexExt = ".bai";
 
 const std::string excludeFileName = "remove_chr_windows.bed";
 
+const std::string inpIntervalFileName = "chr_windows.bed";
+
 const double RO_MERGE = 0.5;
 
 const int MIN_ALN_QUAL = 0;
+const int MIN_MAP_QUAL = 20;
 
 const int minSCLen = 10;
 const int bpTol = 5;
 const int maxSc = 20;
 const int maxCluster = 10;
+
+const int a_gap = -2;
+const int a_matchScore = 1;
+const int a_misMatchScore = -2;
+const int interAlignScore = 100; //150*2/3 * 1
+const int interMinAlignScore = 40;
+const int intraAlignScore = 60;
+const int intraMinAlignScore = 20;
+
+const int MIN_SC_CLUSTER_SUPPORT = 3;
+const int MIN_SC_DISTANCE = 5;
+
+const int MIN_LARGE_DEL = 500;
+const int MAX_LARGE_DEL_LEN = 20000;
 
 // TODO: Change to 1 and check, do more analysis on what overlap criteria should be
 const int matchScore = 2, mismatchScore = -2, gapPenalty = -2;
@@ -49,8 +66,8 @@ const int MIN_SC_SUP = 3;
 const int MAX_NODES_IN_CLUSTER = 500;
 const int MAX_NODES_IN_BUCKET = 500;
 
-const int MIN_DEL_LEN = 30;
-const int MAX_DEL_LEN = 1000;
+const int MIN_DEL_LEN = 45;
+const int MAX_DEL_LEN = 505;
 
 const int MIN_DISC_CLUSTER_SUPPORT = 3;
 const int MAX_DISC_CLUSTER_DEL_LEN = 50000;
@@ -107,13 +124,15 @@ struct DiscCluster
 
 struct SoftNode
 {
-    int scPos;
+    int scPos, start, end;
     int refID;
     std::string refName;
-    std::string scSeq, nscSeq;
+    std::string seq, scSeq, nscSeq;
     bool down, scAtRight;
 
-    SoftNode(int t_scPos, int t_refID, std::string t_refName, std::string t_scSeq, std::string t_nscSeq, bool t_down, bool t_scAtRight) : scPos(t_scPos), refID(t_refID), refName(t_refName), scSeq(t_scSeq), nscSeq(t_nscSeq), down(t_down), scAtRight(t_scAtRight) {}
+    SoftNode() : scPos() {}
+
+    SoftNode(int t_scPos, int t_start, int t_end, int t_refID, std::string t_refName, std::string t_seq, std::string t_scSeq, std::string t_nscSeq, bool t_down, bool t_scAtRight) : scPos(t_scPos), start(t_start), end(t_end), refID(t_refID), refName(t_refName), seq(t_seq), scSeq(t_scSeq), nscSeq(t_nscSeq), down(t_down), scAtRight(t_scAtRight) {}
 };
 
 struct SoftCluster
@@ -121,12 +140,19 @@ struct SoftCluster
     SoftNode info;
     std::vector<SoftNode> nodes;
 
+    SoftCluster() : info() {}
+
     SoftCluster(SoftNode t_sn) : info(t_sn) { nodes.emplace_back(t_sn); }
 };
 
 inline bool SoftCmp(const SoftNode &a, const SoftNode &b)
 {
     return a.scPos < b.scPos;
+}
+
+inline bool SoftClusterCmp(const SoftCluster &a, const SoftCluster &b)
+{
+    return a.info.scPos < b.info.scPos;
 }
 
 inline bool inBetween(const int &a, const int &b, const int &x)

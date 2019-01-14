@@ -7,8 +7,6 @@ set( SOURCES
     ${CMAKE_SOURCE_DIR}/source/Misc.hpp
     ${CMAKE_SOURCE_DIR}/source/OutputWriter.cpp
     ${CMAKE_SOURCE_DIR}/source/OutputWriter.hpp
-    ${CMAKE_SOURCE_DIR}/source/VariantDetect.cpp
-    ${CMAKE_SOURCE_DIR}/source/VariantDetect.hpp
     )
 
 include_directories( "${CMAKE_SOURCE_DIR}/external/args" )

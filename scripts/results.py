@@ -1,11 +1,6 @@
-import subprocess
 
 FLAG_SVCLASSIFY = True
-FLAG_COV = False
 FLAG_50 = True
-FLAG_SUPPORT = False
-VAL_LARGE_SUPPORT = 8
-VAL_SMALL_SUPPORT = 5
 ONLY_LARGE = False
 ONLY_SMALL = False
 FLAG_MAPPABILITY = False
@@ -14,7 +9,6 @@ SPLIT_LARGE = 500
 
 # Reciprocal overlap
 RO = 0.5
-INP_COV = 30
 
 """
 This function normalizes chromosome name
@@ -66,19 +60,6 @@ def checkOverlap(list_a, list_b):
             return True
 
     return False
-
-
-def checkCoverage(x_list):
-    x_chr = x_list[0]
-    x_st = x_list[1]
-    x_en = x_list[2]
-    cmd = "samtools depth -aa -r " + str(x_chr) + ":" + str(x_st) + "-" + str(x_en) \
-        + " /Volumes/HDD/Data/30x/chr/" + str(x_chr) \
-        + ".bam | awk '{ sum += $3; n++} END { if (n > 0) print sum/n; }'"
-    cov = float(subprocess.check_output(
-        cmd, shell=True).decode("utf-8") .replace('\n', ''))
-
-    return cov <= INP_COV
 
 
 def checkMap(st, en, sc):
@@ -134,8 +115,6 @@ def parse(fName, verifyChr):
 
     for inp_line in inp:
         inp_l = inp_line.split()
-        # if len(inp_l) < 5:
-        #     continue
         if inp_l[0] == 'Chromosome':
             continue
         inp_chr = modChr(inp_l[0])
@@ -155,22 +134,9 @@ def parse(fName, verifyChr):
         if ONLY_SMALL:
             if inp_en - inp_st + 1 >= SPLIT_LARGE:
                 continue
-        if len(inp_l) >= 6:
-            sup1 = int(inp_l[4])
-            sup2 = int(inp_l[5])
-            if FLAG_SUPPORT:
-                if inp_en - inp_st < SPLIT_LARGE:
-                    if sup2 < VAL_SMALL_SUPPORT:
-                        continue
-                else:
-                    if sup1 + sup2 < VAL_LARGE_SUPPORT:
-                        continue
 
         if FLAG_50:
             if inp_en - inp_st + 1 < 50:
-                continue
-        if FLAG_COV:
-            if not checkCoverage(here_list):
                 continue
 
         num_pred += 1
@@ -240,10 +206,13 @@ def main():
     f_merge = '/Users/alok/tmp/2018/Dec/20/merge_merge.bed'
     f_sc = '/Users/alok/Data/30x/results/all.bed'
     f_tiddit = '/Users/alok/Data/30x/results/tiddit/noins.txt'
-    f_mq_18 = '/Users/alok/tmp/2019/Jan/10/18_mq_20/deletions.bed'
+    f_small_mq = '/Users/alok/tmp/2019/Jan/14/1/tmp1_dels_small.txt'
+    f_large_mq = '/Users/alok/tmp/2019/Jan/14/18/tmp1_dels_large.txt'
+    f_all_mq = '/Users/alok/tmp/2019/Jan/14/19/deletions.bed'
+    f_mq_18 = '/Users/alok/tmp/2019/Jan/12/18_mq/deletions.bed'
     f_manta = '/Users/alok/Data/30x/results/manta.txt'
 
-    allChr = [['18']]
+    allChr = [['19']]
     # allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
     #     '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
 
@@ -258,8 +227,11 @@ def main():
     # parse(f_sc, wholeGenom)
     # parse(f_split, wholeGenom)
     parse(f_merge, wholeGenom)
-    parse(f_mq_18, wholeGenom)
-    parse(f_tiddit, wholeGenom)
+    parse(f_all_mq, wholeGenom)
+    # parse(f_large_mq, wholeGenom)
+    # parse(f_small_mq, wholeGenom)
+    # parse(f_mq_18, wholeGenom)
+    # parse(f_tiddit, wholeGenom)
     # parse(f_manta, wholeGenom)
 
     # returns True
