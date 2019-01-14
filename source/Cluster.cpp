@@ -40,7 +40,8 @@ int main(int argc, char const *argv[])
 		auto stdDevTask = transwarp::make_value_task(ap.stdDev);
 		auto outFolderTask = transwarp::make_value_task(ap.outFolderPath);
 		auto verboseTask = transwarp::make_value_task(ap.verbose);
-		auto inputTask = transwarp::make_task(transwarp::consume, processInput, inpFileTask, meanTask, stdDevTask, outFolderTask, verboseTask);
+		auto threadsTask = transwarp::make_value_task(ap.threads);
+		auto inputTask = transwarp::make_task(transwarp::consume, processInput, inpFileTask, meanTask, stdDevTask, outFolderTask, verboseTask, threadsTask);
 
 		tasks.emplace_back(inputTask);
 	}

@@ -7,37 +7,38 @@ SUPPORT_SPLIT=$6
 
 echo "Input file:" $INP_FILE
 echo "Output folder:" $OUTPUT_FOLDER
+echo "Coverage:" $COVERAGE
 echo "Support Large:" $SUPPORT_LARGE
 echo "Support Small:" $SUPPORT_SMALL
 echo "Support Split:" $SUPPORT_SPLIT
 
 # Large
-sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp1_dels_large.txt" > $OUTPUT_FOLDER"tmp2_l0.bed"
-cat $OUTPUT_FOLDER"tmp2_l0.bed" | awk -v SUP="$SUPPORT_LARGE" '{ if($5+$6 >= SUP) { print }}' > $OUTPUT_FOLDER"tmp2_l1.bed"
-samtools bedcov $OUTPUT_FOLDER"tmp2_l1.bed" $INP_FILE > $OUTPUT_FOLDER"tmp2_l2.bed"
-awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_l2.bed" > $OUTPUT_FOLDER"tmp2_l3.bed"
-bedtools merge -i $OUTPUT_FOLDER"tmp2_l3.bed" > $OUTPUT_FOLDER"tmp2_large.bed"
+sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp1_dels_large.txt" > $OUTPUT_FOLDER"tmp2_l0.txt"
+cat $OUTPUT_FOLDER"tmp2_l0.txt" | awk -v SUP="$SUPPORT_LARGE" '{ if($5+$6 >= SUP) { print }}' > $OUTPUT_FOLDER"tmp2_l1.txt"
+samtools bedcov $OUTPUT_FOLDER"tmp2_l1.txt" $INP_FILE > $OUTPUT_FOLDER"tmp2_l2.txt"
+awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_l2.txt" > $OUTPUT_FOLDER"tmp2_l3.txt"
+bedtools merge -i $OUTPUT_FOLDER"tmp2_l3.txt" > $OUTPUT_FOLDER"tmp2_large.bed"
 
 # Split
-sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp1_dels_split.txt" > $OUTPUT_FOLDER"tmp2_sr0.bed"
-cat $OUTPUT_FOLDER"tmp2_sr0.bed" | awk -v SUP="$SUPPORT_SPLIT" '{ if($6 >= SUP) { print }}' > $OUTPUT_FOLDER"tmp2_sr1.bed"
-samtools bedcov $OUTPUT_FOLDER"tmp2_sr1.bed" $INP_FILE > $OUTPUT_FOLDER"tmp2_sr2.bed"
-awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_sr2.bed" > $OUTPUT_FOLDER"tmp2_sr3.bed"
-bedtools merge -i $OUTPUT_FOLDER"tmp2_sr3.bed" > $OUTPUT_FOLDER"tmp2_split.bed"
+sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp1_dels_split.txt" > $OUTPUT_FOLDER"tmp2_sr0.txt"
+cat $OUTPUT_FOLDER"tmp2_sr0.txt" | awk -v SUP="$SUPPORT_SPLIT" '{ if($6 >= SUP) { print }}' > $OUTPUT_FOLDER"tmp2_sr1.txt"
+samtools bedcov $OUTPUT_FOLDER"tmp2_sr1.txt" $INP_FILE > $OUTPUT_FOLDER"tmp2_sr2.txt"
+awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_sr2.txt" > $OUTPUT_FOLDER"tmp2_sr3.txt"
+bedtools merge -i $OUTPUT_FOLDER"tmp2_sr3.txt" > $OUTPUT_FOLDER"tmp2_split.bed"
 
 # Small
-sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp1_dels_small.txt" > $OUTPUT_FOLDER"tmp2_s0.bed"
-cat $OUTPUT_FOLDER"tmp2_s0.bed" | awk -v SUP="$SUPPORT_SMALL" '{ if($5+$6 >= SUP) { print }}' > $OUTPUT_FOLDER"tmp2_s1.bed"
-samtools bedcov $OUTPUT_FOLDER"tmp2_s1.bed" $INP_FILE > $OUTPUT_FOLDER"tmp2_s2.bed"
-awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_s2.bed" > $OUTPUT_FOLDER"tmp2_s3.bed"
-bedtools merge -i $OUTPUT_FOLDER"tmp2_s3.bed" > $OUTPUT_FOLDER"tmp2_small.bed"
+sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp1_dels_small.txt" > $OUTPUT_FOLDER"tmp2_s0.txt"
+cat $OUTPUT_FOLDER"tmp2_s0.txt" | awk -v SUP="$SUPPORT_SMALL" '{ if($7 >= SUP) { print }}' > $OUTPUT_FOLDER"tmp2_s1.txt"
+samtools bedcov $OUTPUT_FOLDER"tmp2_s1.txt" $INP_FILE > $OUTPUT_FOLDER"tmp2_s2.txt"
+awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_s2.txt" > $OUTPUT_FOLDER"tmp2_s3.txt"
+bedtools merge -i $OUTPUT_FOLDER"tmp2_s3.txt" > $OUTPUT_FOLDER"tmp2_small.bed"
 
 # Merge
 cat $OUTPUT_FOLDER"tmp2_split.bed" $OUTPUT_FOLDER"tmp2_large.bed" $OUTPUT_FOLDER"tmp2_small.bed" > $OUTPUT_FOLDER"tmp2_merge.bed"
 sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp2_merge.bed" > $OUTPUT_FOLDER"tmp2_merge_sort.bed"
 bedtools merge -i $OUTPUT_FOLDER"tmp2_merge_sort.bed" > $OUTPUT_FOLDER"deletions.bed"
 
-rm $OUTPUT_FOLDER"tmp2_l0.bed" $OUTPUT_FOLDER"tmp2_l1.bed" $OUTPUT_FOLDER"tmp2_l2.bed" $OUTPUT_FOLDER"tmp2_l3.bed" \
-    $OUTPUT_FOLDER"tmp2_sr0.bed" $OUTPUT_FOLDER"tmp2_sr1.bed" $OUTPUT_FOLDER"tmp2_sr2.bed" $OUTPUT_FOLDER"tmp2_sr3.bed" \
-    $OUTPUT_FOLDER"tmp2_s0.bed" $OUTPUT_FOLDER"tmp2_s1.bed" $OUTPUT_FOLDER"tmp2_s2.bed" $OUTPUT_FOLDER"tmp2_s3.bed" \
+rm $OUTPUT_FOLDER"tmp2_l0.txt" $OUTPUT_FOLDER"tmp2_l1.txt" $OUTPUT_FOLDER"tmp2_l2.txt" $OUTPUT_FOLDER"tmp2_l3.txt" \
+    $OUTPUT_FOLDER"tmp2_s0.txt" $OUTPUT_FOLDER"tmp2_s1.txt" $OUTPUT_FOLDER"tmp2_s2.txt" $OUTPUT_FOLDER"tmp2_s3.txt" \
+    $OUTPUT_FOLDER"tmp2_sr0.txt" $OUTPUT_FOLDER"tmp2_sr1.txt" $OUTPUT_FOLDER"tmp2_sr2.txt" $OUTPUT_FOLDER"tmp2_sr3.txt" \
     $OUTPUT_FOLDER"tmp2_merge.bed" $OUTPUT_FOLDER"tmp2_merge_sort.bed"
