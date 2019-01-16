@@ -61,7 +61,7 @@ void DelsLargeSplit(const BamTools::RefVector &ref, const std::vector<DiscCluste
 		SplitCluster sc = splitClusters.at(i);
 		if (sc.nodes.size() < 2)
 			continue;
-		OutNode on(ref.at(sc.info.refID).RefName, sc.info.st, sc.info.en, sc.info.en - sc.info.st + 1, 0, sc.nodes.size(), 0);
+		OutNode on(ref.at(sc.info.refID).RefName, sc.info.st, sc.info.en, 0, sc.nodes.size(), 0);
 		output.emplace_back(on);
 	}
 }
@@ -74,40 +74,7 @@ void deletionsSR(const BamTools::RefVector &ref, const std::vector<DiscCluster> 
 
 	// print deletion to file
 	std::string outputFile = folderPath;
-	parseOutputN(outputFile, outputDelsSplitLarge, 2);
-}
-
-inline void splitMultipleTag(const std::string &tag, std::vector<std::string> &tags)
-{
-	std::size_t idx = tag.find_first_not_of(SEMICOLON, 0);
-	std::size_t semicolonIdx = tag.find_first_of(SEMICOLON, idx);
-
-	while (idx != std::string::npos || semicolonIdx != std::string::npos)
-	{
-		tags.emplace_back(tag.substr(idx, semicolonIdx - idx));
-
-		idx = tag.find_first_not_of(SEMICOLON, semicolonIdx);
-		semicolonIdx = tag.find_first_of(SEMICOLON, idx);
-	}
-}
-
-inline void splitTag(const std::vector<std::string> &tags, std::vector<std::vector<std::string>> &infoTags)
-{
-	for (std::string tag : tags)
-	{
-		std::vector<std::string> infoTag;
-		std::size_t idx = tag.find_first_not_of(COMMA, 0);
-		std::size_t commaIdx = tag.find_first_of(COMMA, idx);
-
-		while (idx != std::string::npos || commaIdx != std::string::npos)
-		{
-			infoTag.emplace_back(tag.substr(idx, commaIdx - idx));
-
-			idx = tag.find_first_not_of(COMMA, commaIdx);
-			commaIdx = tag.find_first_of(COMMA, idx);
-		}
-		infoTags.emplace_back(infoTag);
-	}
+	parseOutput(outputFile, outputDelsSplitLarge, 2);
 }
 
 int parseCigar(std::string cig)
@@ -189,14 +156,14 @@ int alignSeq(const std::string &a, const std::string &b)
 	for (int i = 0; i < rows; ++i)
 		m.at(i).at(0) = 0;
 	for (int j = 0; j < cols; ++j)
-		m.at(0).at(j) = j * a_gap;
+		m.at(0).at(j) = j * gapPenalty;
 	for (int i = 1; i < rows; ++i)
 	{
 		for (int j = 1; j < cols; ++j)
 		{
-			int sim = a.at(i - 1) == b.at(j - 1) ? a_matchScore : a_misMatchScore;
+			int sim = a.at(i - 1) == b.at(j - 1) ? matchScore : misMatchScore;
 			m.at(i).at(j) = std::max(sim + m.at(i - 1).at(j - 1),
-									 std::max(a_gap + m.at(i - 1).at(j), a_gap + m.at(i).at(j - 1)));
+									 std::max(gapPenalty + m.at(i - 1).at(j), gapPenalty + m.at(i).at(j - 1)));
 			maxScore = std::max(maxScore, m.at(i).at(j));
 		}
 	}
@@ -449,15 +416,24 @@ bool overlapCC(const SoftCluster &c1, const SoftCluster &c2)
 {
 	int sum = 0;
 	int maxScore = 0;
-	for (SoftNode n1 : c1.nodes)
+	std::vector<SoftNode> up(c1.nodes.begin(), c1.nodes.end());
+	std::vector<SoftNode> down(c2.nodes.begin(), c2.nodes.end());
+
+	std::sort(up.begin(), up.end(), SoftCmpUp);
+	std::sort(down.begin(), down.end(), SoftCmpDown);
+
+	std::vector<SoftNode> up3(up.end() - std::min((int)up.size(), 3), up.end());
+	std::vector<SoftNode> down3(down.begin(), down.begin() + std::min(3, (int)down.size()));
+
+	for (SoftNode n1 : up3)
 	{
-		for (SoftNode n2 : c2.nodes)
+		for (SoftNode n2 : down3)
 		{
 			int here = alignSeq(n1.seq, n2.seq);
 			sum += here;
 		}
 	}
-	double avgScore = 1.0 * sum / (c1.nodes.size() * c2.nodes.size());
+	double avgScore = 1.0 * sum / (up3.size() + down3.size());
 	return avgScore >= intraAlignScore;
 }
 
@@ -581,11 +557,11 @@ void smallDeletionsSC(const BamTools::RefVector &ref, const std::vector<SoftClus
 		}
 		if (bestIdx != -1)
 		{
-			OutNode on(ref.at(scUp.info.refID).RefName, scUp.info.scPos, scClustersDown.at(bestIdx).info.scPos, scClustersDown.at(bestIdx).info.scPos - scUp.info.scPos + 1, 0, 0, scUp.nodes.size() + scClustersDown.at(bestIdx).nodes.size());
+			OutNode on(ref.at(scUp.info.refID).RefName, scUp.info.scPos, scClustersDown.at(bestIdx).info.scPos, 0, 0, scUp.nodes.size() + scClustersDown.at(bestIdx).nodes.size());
 			output.emplace_back(on);
 		}
 	}
-	parseOutputN(folderPath, output, 1);
+	parseOutput(folderPath, output, 1);
 }
 
 void largeDeletionsSC(const BamTools::RefVector &ref, const std::vector<DiscCluster> &discClusters, std::vector<SoftCluster> &scClustersUp, const std::vector<SoftCluster> &scClustersDown, const std::string &folderPath)
@@ -632,17 +608,17 @@ void largeDeletionsSC(const BamTools::RefVector &ref, const std::vector<DiscClus
 		}
 		if (bestSup != 0)
 		{
-			OutNode on(ref.at(bestUp.info.refID).RefName, bestUp.info.scPos, bestDown.info.scPos, bestDown.info.scPos - bestUp.info.scPos + 1, dc.nodes.size(), 0, bestUp.nodes.size() + bestDown.nodes.size());
+			OutNode on(ref.at(bestUp.info.refID).RefName, bestUp.info.scPos, bestDown.info.scPos, dc.nodes.size(), 0, bestUp.nodes.size() + bestDown.nodes.size());
 			output.emplace_back(on);
 		}
 		else
 		{
-			OutNode on(ref.at(dc.info.refID).RefName, dc.info.upStart, dc.info.downEnd, dc.info.downEnd - dc.info.upStart + 1, dc.nodes.size(), 0, 0);
+			OutNode on(ref.at(dc.info.refID).RefName, dc.info.upStart, dc.info.downEnd, dc.nodes.size(), 0, 0);
 			impreciseOutput.emplace_back(on);
 		}
 	}
-	parseOutputN(folderPath, output, 0);
-	parseOutputN(folderPath, impreciseOutput, 3);
+	parseOutput(folderPath, output, 0);
+	parseOutput(folderPath, impreciseOutput, 3);
 }
 
 void openExcludeRegions(const std::string fPath, std::map<std::string, std::vector<std::pair<long, long>>> &exRegions)
