@@ -181,19 +181,20 @@ def parse(fName, verifyChr):
             if found_list[i][0]:
                 large_co += 1
             # else:
-            #     print('Large:', ref_st, ref_en,
-            #           found_list[i][1], found_list[i][2])
-            # print('chr' + verifyChr[0] + ":" + str(ref_st) + "-" +
-            #       str(ref_en), ref_len, found_list[i][0])
+            #     print('chr' + ref_list[i][0] + ":" + str(ref_st-450) + "-" +
+            #           str(ref_en+450))
+                #     print('Large:', ref_st, ref_en,
+                #           found_list[i][1], found_list[i][2])
+
         else:
             small += 1
             if found_list[i][0]:
                 small_co += 1
             # else:
-            #     print('Small:', ref_st, ref_en,
-            #           found_list[i][1], found_list[i][2])
-            # print('chr' + verifyChr[0] + ":" + str(ref_st) + "-" +
-            #       str(ref_en), ref_len, found_list[i][0])
+            #     print('chr' + ref_list[i][0] + ":" + str(ref_st-250) + "-" +
+            #           str(ref_en+250))
+                # print('Small:', ref_st, ref_en,
+                #       found_list[i][1], found_list[i][2])
     print(large, small)
     print(large_co, small_co)
     print('---------------')
@@ -201,22 +202,23 @@ def parse(fName, verifyChr):
 
 def main():
     f_softsv = '/Users/alok/Data/30x/results/softsv.txt'
-    # f_lumpy = '/Users/alok/tmp/2019/Jan/4/dels-lumpy.txt'
+    f_lumpy = '/Users/alok/Data/30x/results/lumpy_dels.txt'
     f_split = '/Users/alok/tmp/2018/Dec/20/all_split.bed'
     f_merge = '/Users/alok/tmp/2018/Dec/20/merge_merge.bed'
     f_sc = '/Users/alok/Data/30x/results/all.bed'
     f_tiddit = '/Users/alok/Data/30x/results/tiddit/noins.txt'
-    f_small_mq = '/Users/alok/tmp/2019/Jan/14/1/tmp1_dels_small.txt'
+    f_small_mq = '/Users/alok/tmp/today/1_full/deletions.bed'
     f_large_mq = '/Users/alok/tmp/2019/Jan/14/18/tmp1_dels_large.txt'
-    f_all_mq = '/Users/alok/tmp/2019/Jan/14/19/deletions.bed'
+    f_all_mq = '/Users/alok/Data/30x/results/my/deletions.bed'
     f_mq_18 = '/Users/alok/tmp/2019/Jan/12/18_mq/deletions.bed'
     f_manta = '/Users/alok/Data/30x/results/manta.txt'
 
-    allChr = [['19']]
+    allChr = [['1']]
     # allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
     #     '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
 
     # for curChr in allChr:
+    #     parse(f_small_mq, curChr)
     #     # parse(f_softsv, curChr)
     #     parse(f_lumpy, curChr)
     #     parse(f_our, curChr)
@@ -226,18 +228,15 @@ def main():
     # parse(f_lumpy, wholeGenom)
     # parse(f_sc, wholeGenom)
     # parse(f_split, wholeGenom)
-    parse(f_merge, wholeGenom)
-    parse(f_all_mq, wholeGenom)
+    # parse(f_merge, wholeGenom)
+    # parse(f_all_mq, wholeGenom)
     # parse(f_large_mq, wholeGenom)
-    # parse(f_small_mq, wholeGenom)
+    parse(f_small_mq, wholeGenom)
     # parse(f_mq_18, wholeGenom)
     # parse(f_tiddit, wholeGenom)
     # parse(f_manta, wholeGenom)
 
-    # returns True
-    # print(checkOverlap('1', '1', [100, 200], [130, 201]))
-    # returns False
-    # print(checkOverlap('1', '1', [100, 200], [180, 220]))
+    # print(checkOverlap(['22', 43101070, 43102757], ['22', 43101447, 43102198]))
 
 
 if __name__ == '__main__':
