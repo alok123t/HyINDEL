@@ -1,14 +1,16 @@
 
 FLAG_SVCLASSIFY = True
-FLAG_50 = True
+FLAG_50 = False
 ONLY_LARGE = False
 ONLY_SMALL = False
 FLAG_MAPPABILITY = False
 FILTER_MAPPABILITY = 0.75
 SPLIT_LARGE = 500
 
+PRINT_MISSING = False
+
 # Reciprocal overlap
-RO = 0.5
+RO = 0.3
 
 """
 This function normalizes chromosome name
@@ -50,6 +52,9 @@ def checkOverlap(list_a, list_b):
         overlap_len = float(en - st + 1)
         a_len = float(en1 - st1 + 1)
         b_len = float(en2 - st2 + 1)
+
+        if a_len == 0 or b_len == 0:
+            return False
 
         ro_a = overlap_len/a_len
         ro_b = overlap_len/b_len
@@ -141,10 +146,13 @@ def parse(fName, verifyChr):
 
         num_pred += 1
         # print(here_list, inp_en - inp_st + 1)
-
+        found = False
         for i in range(len(ref_list)):
             if checkOverlap(ref_list[i], here_list):
                 found_list[i] = [True, sup1, sup2]
+                found = True
+        # if not found:
+        #     print(here_list[0] + ':' + str(here_list[1])+'-'+str(here_list[2]))
 
     ref.close()
     inp.close()
@@ -180,9 +188,10 @@ def parse(fName, verifyChr):
             large += 1
             if found_list[i][0]:
                 large_co += 1
-            # else:
-            #     print('chr' + ref_list[i][0] + ":" + str(ref_st-450) + "-" +
-            #           str(ref_en+450))
+            else:
+                if PRINT_MISSING:
+                    print('chr' + ref_list[i][0] + ":" + str(ref_st-450) + "-" +
+                          str(ref_en+450))
                 #     print('Large:', ref_st, ref_en,
                 #           found_list[i][1], found_list[i][2])
 
@@ -190,9 +199,10 @@ def parse(fName, verifyChr):
             small += 1
             if found_list[i][0]:
                 small_co += 1
-            # else:
-            #     print('chr' + ref_list[i][0] + ":" + str(ref_st-250) + "-" +
-            #           str(ref_en+250))
+            else:
+                if PRINT_MISSING:
+                    print(ref_list[i][0] + ":" + str(ref_st) + "-" +
+                          str(ref_en))
                 # print('Small:', ref_st, ref_en,
                 #       found_list[i][1], found_list[i][2])
     print(large, small)
@@ -203,38 +213,34 @@ def parse(fName, verifyChr):
 def main():
     f_softsv = '/Users/alok/Data/30x/results/softsv.txt'
     f_lumpy = '/Users/alok/Data/30x/results/lumpy_dels.txt'
-    f_split = '/Users/alok/tmp/2018/Dec/20/all_split.bed'
-    f_merge = '/Users/alok/tmp/2018/Dec/20/merge_merge.bed'
-    f_sc = '/Users/alok/Data/30x/results/all.bed'
     f_tiddit = '/Users/alok/Data/30x/results/tiddit/noins.txt'
-    f_small_mq = '/Users/alok/tmp/today/1_full/deletions.bed'
-    f_large_mq = '/Users/alok/tmp/2019/Jan/14/18/tmp1_dels_large.txt'
-    f_all_mq = '/Users/alok/Data/30x/results/my/deletions.bed'
-    f_mq_18 = '/Users/alok/tmp/2019/Jan/12/18_mq/deletions.bed'
     f_manta = '/Users/alok/Data/30x/results/manta.txt'
+    f_split = '/Users/alok/tmp/2018/Dec/20/all_split.bed'
+    f_sc = '/Users/alok/Data/30x/results/all.bed'
+    f_split_mq = '/Users/alok/tmp/2019/Jan/17/full/tmp2_split.bed'
+    f_1 = '/Users/alok/tmp/2018/Dec/20/merge_merge.bed'
+    f_2 = '/Users/alok/tmp/2019/Jan/17/full/deletions.bed'
+    f_3 = '/Users/alok/tmp/today/test_18/deletions.bed'
 
-    allChr = [['1']]
+    allChr = [['18']]
     # allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
     #     '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
 
     # for curChr in allChr:
-    #     parse(f_small_mq, curChr)
-    #     # parse(f_softsv, curChr)
+    #     parse(f_all_mq, curChr)
     #     parse(f_lumpy, curChr)
-    #     parse(f_our, curChr)
 
     wholeGenom = [x for sublist in allChr for x in sublist]
     # parse(f_softsv, wholeGenom)
     # parse(f_lumpy, wholeGenom)
-    # parse(f_sc, wholeGenom)
-    # parse(f_split, wholeGenom)
-    # parse(f_merge, wholeGenom)
-    # parse(f_all_mq, wholeGenom)
-    # parse(f_large_mq, wholeGenom)
-    parse(f_small_mq, wholeGenom)
-    # parse(f_mq_18, wholeGenom)
     # parse(f_tiddit, wholeGenom)
     # parse(f_manta, wholeGenom)
+    # parse(f_sc, wholeGenom)
+    # parse(f_split, wholeGenom)
+    # parse(f_split_mq, wholeGenom)
+    parse(f_1, wholeGenom)
+    parse(f_2, wholeGenom)
+    parse(f_3, wholeGenom)
 
     # print(checkOverlap(['22', 43101070, 43102757], ['22', 43101447, 43102198]))
 

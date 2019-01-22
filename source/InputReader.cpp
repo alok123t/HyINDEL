@@ -2,8 +2,6 @@
 
 bool overlapDiscRange(const DiscNode &r, const std::vector<DiscNode> &nodes)
 {
-	const double RO = 0.75;
-
 	for (int i = 0; i < nodes.size(); i++)
 	{
 		double len1 = (r.downEnd - r.upStart + 1) * 1.0;
@@ -16,8 +14,8 @@ bool overlapDiscRange(const DiscNode &r, const std::vector<DiscNode> &nodes)
 
 		double ro1 = overlap / len1;
 		double ro2 = overlap / len2;
-		// std::cerr << ro1 << ' ' << ro2 << '\n';
-		bool ok = ro1 >= RO && ro2 >= RO;
+
+		bool ok = ro1 >= DISC_RO && ro2 >= DISC_RO;
 		if (!ok)
 			return false;
 	}
@@ -135,13 +133,11 @@ void clusterDisc(const std::vector<DiscNode> &nodes, std::vector<DiscCluster> &c
 	std::vector<DiscCluster> discClusters;
 	for (DiscNode dn : nodes)
 	{
-		if (dn.downEnd - dn.upStart > MAX_LARGE_DEL_LEN)
-			continue;
 		clusterDiscRange(dn, discClusters);
 	}
 	for (DiscCluster dc : discClusters)
 	{
-		if (dc.nodes.size() > MIN_DISC_CLUSTER_SUPPORT)
+		if (dc.info.support > MIN_DISC_CLUSTER_SUPPORT)
 			clusters.emplace_back(dc);
 	}
 }
@@ -170,35 +166,20 @@ int alignSeq(const std::string &a, const std::string &b)
 	return maxScore;
 }
 
-bool overlapSC(const SoftNode &n, const SoftCluster &c)
+bool overlapSC(const SoftCluster &c, const SoftNode &n)
 {
 	int sum = 0;
 	for (SoftNode cn : c.nodes)
 	{
-		std::string a = n.seq, b = cn.seq;
-		if (n.scAtRight)
-		{
-			if (n.start > cn.start)
-			{
-				a = cn.seq;
-				b = n.seq;
-			}
-		}
-		else
-		{
-			if (n.end > cn.end)
-			{
-				a = cn.seq;
-				b = n.seq;
-			}
-		}
-		int here = alignSeq(a, b);
-		if (here < interMinAlignScore)
+		if (abs(n.scPos - cn.scPos) > MIN_SC_DISTANCE)
 			return false;
-		sum += here;
+		// compare reads in sorted order, first seq should be more towards 5` than second seq
+		double alnScore = 1.0 * alignSeq(cn.seq, n.seq);
+		double o_len = 1.0 * (std::min(n.end, cn.end) - std::max(n.start, cn.start));
+		if (alnScore < alnThreshold * o_len)
+			return false;
 	}
-	double avgScore = 1.0 * sum / c.nodes.size();
-	return avgScore >= interAlignScore;
+	return true;
 }
 
 void clusterSC(const std::vector<SoftNode> &nodes, std::vector<SoftCluster> &clusters)
@@ -214,9 +195,7 @@ void clusterSC(const std::vector<SoftNode> &nodes, std::vector<SoftCluster> &clu
 			// too far apart, will not find a cluster
 			if (n.scPos > clusters.at(i).info.scPos + 100)
 				break;
-			if (abs(n.scPos - clusters.at(i).info.scPos) > MIN_SC_DISTANCE)
-				continue;
-			if (overlapSC(n, clusters.at(i)))
+			if (overlapSC(clusters.at(i), n))
 			{
 				found = true;
 				clusters.at(i).nodes.emplace_back(n);
@@ -246,6 +225,7 @@ void addDisc(BamTools::BamAlignment &aln, const int &bpRegion, std::vector<DiscN
 	int insSz = aln.InsertSize;
 	int support = 1;
 
+	// current read is 3` and its mate at 5`
 	if (aln.Position > aln.MatePosition)
 	{
 		std::swap(upSt, downSt);
@@ -255,6 +235,9 @@ void addDisc(BamTools::BamAlignment &aln, const int &bpRegion, std::vector<DiscN
 		// do not add the same read twice
 		support = 0;
 	}
+
+	if (insSz >= MAX_LARGE_DEL_LEN)
+		return;
 
 	// up should be forward and down should be reverse
 	if (upIsRev || !downIsRev)
@@ -315,6 +298,23 @@ void addSR(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vec
 	}
 }
 
+void addHC(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vector<SoftNode> &nodesUp, std::vector<SoftNode> &nodesDown)
+{
+	bool isSC = false;
+	if (aln.CigarData.back().Type == 'H')
+	{
+		int start = aln.Position, end = aln.GetEndPosition();
+		SoftNode sn(end, start, end, aln.RefID, ref.at(aln.RefID).RefName, aln.QueryBases, aln.Name, true, isSC);
+		nodesUp.emplace_back(sn);
+	}
+	else if (aln.CigarData.front().Type == 'H')
+	{
+		int start = aln.Position, end = aln.GetEndPosition();
+		SoftNode sn(start, start, end, aln.RefID, ref.at(aln.RefID).RefName, aln.QueryBases, aln.Name, false, isSC);
+		nodesDown.emplace_back(sn);
+	}
+}
+
 void addSC(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vector<SoftNode> &nodesUp, std::vector<SoftNode> &nodesDown)
 {
 	std::vector<int> clipSizes, readPositions, genomePositions;
@@ -322,12 +322,6 @@ void addSC(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vec
 	// read should have SC
 	if (!isSC)
 		return;
-
-	bool down = false;
-	if (aln.Position > aln.MatePosition)
-	{
-		down = true;
-	}
 
 	int scIdx;
 	bool scAtRight = false;
@@ -362,14 +356,20 @@ void addSC(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vec
 	int seqLen = seq.size();
 
 	std::string refName = ref.at(aln.RefID).RefName;
-	std::string scSeq, nscSeq;
-	int start = aln.Position, end = aln.Position + aln.AlignedBases.size();
-	SoftNode sn(scPos, start, end, aln.RefID, refName, seq, aln.Name, nscSeq, down, scAtRight);
+	SoftNode sn(scPos, -1, -1, aln.RefID, refName, seq, aln.Name, scAtRight, isSC);
 
 	if (sn.scAtRight)
+	{
+		sn.start = aln.Position;
+		sn.end = aln.Position + aln.QueryBases.size();
 		nodesUp.emplace_back(sn);
+	}
 	else
+	{
+		sn.start = aln.GetEndPosition() - aln.QueryBases.size();
+		sn.end = aln.GetEndPosition();
 		nodesDown.emplace_back(sn);
+	}
 }
 
 bool inExclude(long pos, std::vector<std::pair<long, long>> v)
@@ -401,7 +401,7 @@ int getIdx(int pos, const std::vector<SoftCluster> &clusters)
 	while (low <= high)
 	{
 		int mid = (low + high) >> 1;
-		if (clusters.at(mid).info.scPos > pos)
+		if (pos <= clusters.at(mid).info.scPos)
 		{
 			ret = mid;
 			high = mid - 1;
@@ -419,11 +419,53 @@ bool overlapCC(const SoftCluster &c1, const SoftCluster &c2)
 	std::vector<SoftNode> up(c1.nodes.begin(), c1.nodes.end());
 	std::vector<SoftNode> down(c2.nodes.begin(), c2.nodes.end());
 
-	std::sort(up.begin(), up.end(), SoftCmpUp);
-	std::sort(down.begin(), down.end(), SoftCmpDown);
+	// check if split read already present
+	std::set<std::string> stUp, stDown;
+	for (SoftNode sn : up)
+	{
+		if (!sn.isSC)
+			stUp.insert(sn.readName);
+	}
+	for (SoftNode sn : down)
+	{
+		if (!sn.isSC)
+			stDown.insert(sn.readName);
+	}
+	int srCo = 0;
+	for (SoftNode sn : up)
+	{
+		if (sn.isSC)
+		{
+			if (stDown.find(sn.readName) != stDown.end())
+				srCo += 1;
+		}
+	}
+	for (SoftNode sn : down)
+	{
+		if (sn.isSC)
+		{
+			if (stUp.find(sn.readName) != stUp.end())
+				srCo += 1;
+		}
+	}
+	if (srCo >= MIN_SPLIT_CO)
+		return true;
 
-	std::vector<SoftNode> up3(up.end() - std::min((int)up.size(), 3), up.end());
-	std::vector<SoftNode> down3(down.begin(), down.begin() + std::min(3, (int)down.size()));
+	std::vector<SoftNode> up3, down3;
+	for (int i = up.size() - 1; i >= 0; i--)
+	{
+		if (up.at(i).isSC)
+			up3.emplace_back(up.at(i));
+		if (up3.size() >= 3)
+			break;
+	}
+	for (int i = down.size() - 1; i >= 0; i--)
+	{
+		if (down.at(i).isSC)
+			down3.emplace_back(down.at(i));
+		if (down3.size() >= 3)
+			break;
+	}
 
 	for (SoftNode n1 : up3)
 	{
@@ -437,27 +479,6 @@ bool overlapCC(const SoftCluster &c1, const SoftCluster &c2)
 	return avgScore >= intraAlignScore;
 }
 
-void mergeSC(const std::vector<SoftCluster> &c, std::vector<SoftCluster> &mergedC)
-{
-	for (int i = c.size() - 1; i >= 0; i--)
-	{
-		bool found = false;
-		if (!mergedC.empty() && mergedC.back().info.scPos - c.at(i).info.scPos <= MIN_SC_DISTANCE)
-		{
-			if (overlapCC(mergedC.back(), c.at(i)))
-			{
-				found = true;
-				for (SoftNode n : c.at(i).nodes)
-					mergedC.back().nodes.emplace_back(n);
-			}
-		}
-		if (!found)
-		{
-			mergedC.emplace_back(c.at(i));
-		}
-	}
-}
-
 void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const int &bpRegion, const bool verbose, const std::map<std::string, std::vector<std::pair<long, long>>> &exRegions, std::vector<DiscCluster> &discClusters, std::vector<SplitCluster> &srClusters, std::vector<SoftCluster> &scClustersUp, std::vector<SoftCluster> &scClustersDown)
 {
 	std::vector<DiscNode> discNodes;
@@ -467,6 +488,7 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 	BamTools::BamAlignment aln;
 	while (br.GetNextAlignment(aln))
 	{
+		// alignment quality check
 		if (aln.MapQuality < MIN_MAP_QUAL)
 			continue;
 		// both reads should be mapped
@@ -475,7 +497,7 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 		// both pairs should be on same chr
 		if (aln.RefID != aln.MateRefID)
 			continue;
-
+		// not part of excluded region
 		if (exRegions.find(ref.at(aln.RefID).RefName) != exRegions.end())
 		{
 			if (inExclude(aln.Position, exRegions.at(ref.at(aln.RefID).RefName)))
@@ -484,8 +506,12 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 
 		addDisc(aln, bpRegion, discNodes);
 		addSR(aln, ref, srNodes);
+		addHC(aln, ref, scNodesUp, scNodesDown);
 		addSC(aln, ref, scNodesUp, scNodesDown);
 	}
+
+	std::sort(scNodesUp.begin(), scNodesUp.end(), SoftCmp);
+	std::sort(scNodesDown.begin(), scNodesDown.end(), SoftCmp);
 
 	if (debug)
 	{
@@ -497,26 +523,26 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 	std::vector<SoftCluster> clustersUp, clustersDown, mergedUp, mergedDown;
 
 	clusterDisc(discNodes, discClusters);
-	clusterSR(srNodes, srClusters);
+
+	// clusterSR(srNodes, srClusters);
+
 	clusterSC(scNodesUp, clustersUp);
 	clusterSC(scNodesDown, clustersDown);
 
 	std::sort(clustersUp.begin(), clustersUp.end(), SoftClusterCmp);
 	std::sort(clustersDown.begin(), clustersDown.end(), SoftClusterCmp);
 
-	mergeSC(clustersUp, mergedUp);
-	mergeSC(clustersDown, mergedDown);
-
-	for (auto c : mergedUp)
+	for (auto c : clustersUp)
 	{
-		if (c.nodes.size() >= MIN_SC_CLUSTER_SUPPORT)
+		if (c.nodes.size() > MIN_SC_CLUSTER_SUPPORT)
 			scClustersUp.emplace_back(c);
 	}
-	for (auto c : mergedDown)
+	for (auto c : clustersDown)
 	{
-		if (c.nodes.size() >= MIN_SC_CLUSTER_SUPPORT)
+		if (c.nodes.size() > MIN_SC_CLUSTER_SUPPORT)
 			scClustersDown.emplace_back(c);
 	}
+
 	std::sort(scClustersUp.begin(), scClustersUp.end(), SoftClusterCmp);
 	std::sort(scClustersDown.begin(), scClustersDown.end(), SoftClusterCmp);
 
@@ -539,7 +565,7 @@ void smallDeletionsSC(const BamTools::RefVector &ref, const std::vector<SoftClus
 			continue;
 
 		int bestIdx = -1, bestSup = 0;
-		for (int i = stBound; i < scClustersDown.size() - 1; ++i)
+		for (int i = stBound; i < scClustersDown.size(); ++i)
 		{
 			if (scClustersDown.at(i).info.scPos - scUp.info.scPos > MAX_DEL_LEN)
 				break;
@@ -689,7 +715,7 @@ void parallelProcess(const std::tuple<std::string, int, int> &region, const BamT
 
 	readInput(br, ref, bpRegion, verbose, exRegions, discClusters, srClusters, scClustersUp, scClustersDown);
 
-	deletionsSR(ref, discClusters, srClusters, inpFilePath, outFolderPath);
+	// deletionsSR(ref, discClusters, srClusters, inpFilePath, outFolderPath);
 
 	smallDeletionsSC(ref, scClustersUp, scClustersDown, outFolderPath);
 
