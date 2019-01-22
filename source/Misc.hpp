@@ -33,9 +33,11 @@ const int MIN_MAP_QUAL = 20;
 
 const int bpTol = 5;
 
-const int gapPenalty = -2;
 const int matchScore = 1;
-const int misMatchScore = -2;
+const int misMatchScore = -1;
+const int gapPenalty = -1;
+const double alnThreshold = 0.85;
+
 const int interAlignScore = 100; //150*2/3 * 1
 const int interMinAlignScore = 40;
 const int intraAlignScore = 60;
@@ -47,6 +49,9 @@ const int MIN_SC_SUP = 3;
 const int MIN_DEL_LEN = 45;
 const int MAX_DEL_LEN = 505;
 
+const int MIN_SPLIT_CO = 3;
+
+const double DISC_RO = 0.65;
 const int MIN_DISC_CLUSTER_SUPPORT = 3;
 const int MAX_DISC_CLUSTER_DEL_LEN = 50000;
 const int MIN_LARGE_DEL = 500;
@@ -110,12 +115,12 @@ struct SoftNode
     int scPos, start, end;
     int refID;
     std::string refName;
-    std::string seq, scSeq, nscSeq;
-    bool down, scAtRight;
+    std::string seq, readName;
+    bool scAtRight, isSC;
 
     SoftNode() : scPos() {}
 
-    SoftNode(int t_scPos, int t_start, int t_end, int t_refID, std::string t_refName, std::string t_seq, std::string t_scSeq, std::string t_nscSeq, bool t_down, bool t_scAtRight) : scPos(t_scPos), start(t_start), end(t_end), refID(t_refID), refName(t_refName), seq(t_seq), scSeq(t_scSeq), nscSeq(t_nscSeq), down(t_down), scAtRight(t_scAtRight) {}
+    SoftNode(int t_scPos, int t_start, int t_end, int t_refID, std::string t_refName, std::string t_seq, std::string t_readName, bool t_scAtRight, bool t_isSC) : scPos(t_scPos), start(t_start), end(t_end), refID(t_refID), refName(t_refName), seq(t_seq), readName(t_readName), scAtRight(t_scAtRight), isSC(t_isSC) {}
 };
 
 struct SoftCluster
@@ -130,7 +135,7 @@ struct SoftCluster
 
 inline bool SoftCmp(const SoftNode &a, const SoftNode &b)
 {
-    return a.scPos < b.scPos;
+    return a.start < b.start;
 }
 
 inline bool SoftCmpUp(const SoftNode &a, const SoftNode &b)
