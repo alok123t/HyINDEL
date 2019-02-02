@@ -36,7 +36,7 @@ const int bpTol = 5;
 const int matchScore = 1;
 const int misMatchScore = -1;
 const int gapPenalty = -1;
-const double alnThreshold = 0.85;
+const double alnThreshold = 0.9;
 
 const int interAlignScore = 100; //150*2/3 * 1
 const int interMinAlignScore = 40;
@@ -56,6 +56,9 @@ const int MIN_DISC_CLUSTER_SUPPORT = 3;
 const int MAX_DISC_CLUSTER_DEL_LEN = 50000;
 const int MIN_LARGE_DEL = 500;
 const int MAX_LARGE_DEL_LEN = 20000;
+
+const double DDEL_RO = 0.90;
+const int MIN_DDEL_SUPPORT = 5;
 
 const int MAX_SPLIT_LEN = 512345;
 const int MIN_SPLIT_LEN = 51;
@@ -108,6 +111,26 @@ struct DiscCluster
     std::vector<DiscNode> nodes;
 
     DiscCluster(DiscNode t_dn) : info(t_dn) { nodes.emplace_back(t_dn); }
+};
+
+struct DirectDelNode
+{
+    int pos, delLen;
+    std::string refName;
+
+    DirectDelNode() : pos() {}
+
+    DirectDelNode(int t_pos, int t_delLen, std::string t_refName) : pos(t_pos), delLen(t_delLen), refName(t_refName) {}
+};
+
+struct DirectDelCluster
+{
+    DirectDelNode info;
+    std::vector<DirectDelNode> nodes;
+
+    DirectDelCluster() : info() {}
+
+    DirectDelCluster(DirectDelNode t_dn) : info(t_dn) { nodes.emplace_back(t_dn); }
 };
 
 struct SoftNode

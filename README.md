@@ -9,8 +9,7 @@
 ## Installation
 ```shell
 git clone --recursive https://github.com/alok123t/indel-detect.git
-cd indel-detect
-rm -rf build && mkdir build && cd build
+cd indel-detect && mkdir -p build && cd build
 cmake .. && make -j4 && make test
 ```
 

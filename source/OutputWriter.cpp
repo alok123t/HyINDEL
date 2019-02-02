@@ -2,7 +2,6 @@
 
 const std::string suffixDelsLarge = "tmp1_dels_large.txt";
 const std::string suffixDelsSmall = "tmp1_dels_small.txt";
-const std::string suffixDelsSplit = "tmp1_dels_split.txt";
 const std::string suffixDelsLargeImprecise = "tmp1_dels_large_imprecise.txt";
 
 std::string suffixFn(int outputType)
@@ -12,8 +11,6 @@ std::string suffixFn(int outputType)
 	else if (outputType == 1)
 		return suffixDelsSmall;
 	else if (outputType == 2)
-		return suffixDelsSplit;
-	else if (outputType == 3)
 		return suffixDelsLargeImprecise;
 	else
 		return std::string();
