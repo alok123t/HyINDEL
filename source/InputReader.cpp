@@ -100,34 +100,6 @@ int parseCigar(std::string cig)
 	return ret;
 }
 
-void clusterSR(const std::vector<SplitNode> &nodes, std::vector<SplitCluster> &clusters)
-{
-	for (int i = 0; i < nodes.size(); ++i)
-	{
-		bool found = false;
-		for (int j = clusters.size() - 1; j >= 0; j--)
-		{
-			int d1 = std::abs(clusters.at(j).info.st - nodes.at(i).st);
-			int d2 = std::abs(clusters.at(j).info.en - nodes.at(i).en);
-			if (d1 <= 5 && d2 <= 5)
-			{
-				found = true;
-				clusters.at(j).nodes.emplace_back(nodes.at(i));
-				break;
-			}
-			if (d1 > MAX_SPLIT_LEN || d2 > MAX_SPLIT_LEN)
-				break;
-		}
-		if (!found)
-		{
-			SplitCluster sc(nodes.at(i));
-			clusters.emplace_back(sc);
-		}
-	}
-
-	std::sort(clusters.begin(), clusters.end(), SplitCmp);
-}
-
 void clusterDisc(const std::vector<DiscNode> &nodes, std::vector<DiscCluster> &clusters)
 {
 	std::vector<DiscCluster> discClusters;
@@ -479,11 +451,88 @@ bool overlapCC(const SoftCluster &c1, const SoftCluster &c2)
 	return avgScore >= intraAlignScore;
 }
 
-void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const int &bpRegion, const bool verbose, const std::map<std::string, std::vector<std::pair<long, long>>> &exRegions, std::vector<DiscCluster> &discClusters, std::vector<SplitCluster> &srClusters, std::vector<SoftCluster> &scClustersUp, std::vector<SoftCluster> &scClustersDown)
+void addDDel(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vector<DirectDelNode> &nodes)
+{
+	int pos = aln.Position;
+	int delLen = 0;
+	for (int i = 0; i < aln.CigarData.size(); ++i)
+	{
+		if (aln.CigarData.at(i).Type == 'I')
+			continue;
+		else if (aln.CigarData.at(i).Type == 'M')
+			pos += aln.CigarData.at(i).Length;
+		else if (aln.CigarData.at(i).Type == 'S')
+			continue;
+		else if (aln.CigarData.at(i).Type == 'D')
+		{
+			if (aln.CigarData.at(i).Length >= MIN_DEL_LEN)
+			{
+				DirectDelNode dn(pos, aln.CigarData.at(i).Length, ref.at(aln.RefID).RefName);
+				nodes.emplace_back(dn);
+			}
+		}
+	}
+}
+
+bool checkRO(const DirectDelNode &n1, const DirectDelNode &n2)
+{
+	int st1 = n1.pos, en1 = n1.pos + n1.delLen;
+	int st2 = n2.pos, en2 = n2.pos + n2.delLen;
+	double overlap = 1.0 * (std::max(en1, en2) - std::min(st1, st2));
+	double len1 = 1.0 * (en1 - st1);
+	double len2 = 1.0 * (en2 - st2);
+	double ro1 = overlap / len1;
+	double ro2 = overlap / len2;
+	return ro1 >= DDEL_RO && ro2 >= DDEL_RO;
+}
+
+void clusterDDel(const std::vector<DirectDelNode> &nodes, std::vector<DirectDelCluster> &clusters)
+{
+	for (DirectDelNode n : nodes)
+	{
+		bool found = false;
+		for (int i = clusters.size() - 1; i >= 0; i--)
+		{
+			// diff chr
+			if (clusters.at(i).info.refName != n.refName)
+				break;
+			if (checkRO(clusters.at(i).info, n))
+			{
+				// push new node
+				clusters.at(i).nodes.emplace_back(n);
+				found = true;
+				break;
+			}
+		}
+		// add new cluster
+		if (!found)
+		{
+			DirectDelCluster dc(n);
+			clusters.emplace_back(dc);
+		}
+	}
+}
+
+void directDeletions(const std::vector<DirectDelCluster> &clusters, const std::string &folderPath)
+{
+	std::vector<OutNode> output;
+
+	for (auto dc : clusters)
+	{
+		if (dc.nodes.size() >= MIN_DDEL_SUPPORT)
+		{
+			OutNode on(dc.info.refName, dc.info.pos, dc.info.pos + dc.info.delLen - 1, 0, 0, dc.nodes.size());
+			output.emplace_back(on);
+		}
+	}
+	parseOutput(folderPath, output, 1);
+}
+
+void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const int &bpRegion, const bool verbose, const std::map<std::string, std::vector<std::pair<long, long>>> &exRegions, std::vector<DiscCluster> &discClusters, std::vector<SoftCluster> &scClustersUp, std::vector<SoftCluster> &scClustersDown, std::vector<DirectDelCluster> &dDelClusters)
 {
 	std::vector<DiscNode> discNodes;
-	std::vector<SplitNode> srNodes;
 	std::vector<SoftNode> scNodesUp, scNodesDown;
+	std::vector<DirectDelNode> dDelNodes;
 
 	BamTools::BamAlignment aln;
 	while (br.GetNextAlignment(aln))
@@ -505,9 +554,9 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 		}
 
 		addDisc(aln, bpRegion, discNodes);
-		addSR(aln, ref, srNodes);
 		addHC(aln, ref, scNodesUp, scNodesDown);
 		addSC(aln, ref, scNodesUp, scNodesDown);
+		addDDel(aln, ref, dDelNodes);
 	}
 
 	std::sort(scNodesUp.begin(), scNodesUp.end(), SoftCmp);
@@ -516,15 +565,15 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 	if (debug)
 	{
 		std::cerr << "Disc nodes: " << discNodes.size() << '\n';
-		std::cerr << "SR nodes: " << srNodes.size() << '\n';
 		std::cerr << "SC nodes: " << scNodesUp.size() + scNodesDown.size() << '\n';
+		std::cerr << "Direct Del nodes: " << dDelNodes.size() << '\n';
 	}
 
 	std::vector<SoftCluster> clustersUp, clustersDown, mergedUp, mergedDown;
 
-	clusterDisc(discNodes, discClusters);
+	clusterDDel(dDelNodes, dDelClusters);
 
-	// clusterSR(srNodes, srClusters);
+	clusterDisc(discNodes, discClusters);
 
 	clusterSC(scNodesUp, clustersUp);
 	clusterSC(scNodesDown, clustersDown);
@@ -549,8 +598,8 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 	if (debug)
 	{
 		std::cerr << "Disc clusters: " << discClusters.size() << '\n';
-		std::cerr << "SR clusters: " << srClusters.size() << '\n';
 		std::cerr << "SC clusters: " << scClustersUp.size() + scClustersDown.size() << '\n';
+		std::cerr << "Direct Del clusters: " << dDelClusters.size() << '\n';
 	}
 }
 
@@ -644,23 +693,27 @@ void largeDeletionsSC(const BamTools::RefVector &ref, const std::vector<DiscClus
 		}
 	}
 	parseOutput(folderPath, output, 0);
-	parseOutput(folderPath, impreciseOutput, 3);
+	parseOutput(folderPath, impreciseOutput, 2);
 }
 
 void openExcludeRegions(const std::string fPath, std::map<std::string, std::vector<std::pair<long, long>>> &exRegions)
 {
 	std::string exChr;
-	long exSt, exEn, exCount;
-	double exCov;
+	long exSt, exEn;
 
 	std::fstream fs;
 	fs.open(fPath, std::fstream::in);
 	if (!fs.is_open())
 	{
 		std::cerr << "Could not find exclude regions file at: " << fPath << '\n';
+		return;
+	}
+	else
+	{
+		std::cerr << "Exclude regions file: " << fPath << '\n';
 	}
 
-	while (fs >> exChr >> exSt >> exEn >> exCount >> exCov)
+	while (fs >> exChr >> exSt >> exEn)
 	{
 		exRegions[exChr].emplace_back(std::make_pair(exSt, exEn));
 	}
@@ -682,6 +735,10 @@ void openInputIntervals(const std::string fPath, std::vector<std::tuple<std::str
 	{
 		std::cerr << "Could not find input regions file at: " << fPath << '\n';
 		return;
+	}
+	else
+	{
+		std::cerr << "Input regions file: " << fPath << '\n';
 	}
 
 	std::string chr;
@@ -712,10 +769,12 @@ void parallelProcess(const std::tuple<std::string, int, int> &region, const BamT
 	std::vector<DiscCluster> discClusters;
 	std::vector<SplitCluster> srClusters;
 	std::vector<SoftCluster> scClustersUp, scClustersDown;
+	std::vector<DirectDelCluster> dDelClusters;
 
-	readInput(br, ref, bpRegion, verbose, exRegions, discClusters, srClusters, scClustersUp, scClustersDown);
+	readInput(br, ref, bpRegion, verbose, exRegions, discClusters, scClustersUp, scClustersDown, dDelClusters);
 
 	// deletionsSR(ref, discClusters, srClusters, inpFilePath, outFolderPath);
+	directDeletions(dDelClusters, outFolderPath);
 
 	smallDeletionsSC(ref, scClustersUp, scClustersDown, outFolderPath);
 
@@ -753,7 +812,7 @@ void processInput(const std::string inpFilePath, const int mean, const int stdDe
 		refCo++;
 	}
 
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 3; i++)
 		headerOutput(outFolderPath, i);
 
 	int bpRegion = mean + (3 * stdDev);

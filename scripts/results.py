@@ -1,6 +1,6 @@
 
-FLAG_SVCLASSIFY = True
-FLAG_50 = False
+FLAG_SVCLASSIFY = 0
+FLAG_50 = True
 ONLY_LARGE = False
 ONLY_SMALL = False
 FLAG_MAPPABILITY = False
@@ -81,12 +81,15 @@ def checkMap(st, en, sc):
 
 def parse(fName, verifyChr):
     print(verifyChr, fName)
-    if FLAG_SVCLASSIFY:
+    if FLAG_SVCLASSIFY == 0:
         ref = open(
             '/Users/alok/Tools/indel-detect/scripts/GS/gs-svclassify.txt')
-    else:
+    elif FLAG_SVCLASSIFY == 1:
         ref = open(
-            '/Users/alok/Tools/indel-detect/scripts/GS/gs-dgv.txt')
+            '/Users/alok/tmp/today/mills.bed')
+    elif FLAG_SVCLASSIFY == 2:
+        ref = open(
+            '/Users/alok/tmp/today/long.bed')
 
     inp = open(fName)
 
@@ -99,7 +102,8 @@ def parse(fName, verifyChr):
 
     for ref_line in ref:
         ref_l = ref_line.split()
-        if ref_l[0] not in verifyChr:
+        ref_chr = modChr(ref_l[0])
+        if ref_chr not in verifyChr:
             continue
         ref_st = int(ref_l[1])
         ref_en = int(ref_l[2])
@@ -220,15 +224,17 @@ def main():
     f_split_mq = '/Users/alok/tmp/2019/Jan/17/full/tmp2_split.bed'
     f_1 = '/Users/alok/tmp/2018/Dec/20/merge_merge.bed'
     f_2 = '/Users/alok/tmp/2019/Jan/17/full/deletions.bed'
-    f_3 = '/Users/alok/tmp/today/test_18/deletions.bed'
+    f_3 = '/Users/alok/tmp/2019/Jan/22/full/deletions.bed'
+    f_3_nomerge = '/Users/alok/tmp/today/s-1.bed'
+    f_3_1 = '/Users/alok/tmp/today/rem_bins/deletions.bed'
+    f_3_2 = '/Users/alok/tmp/today/old_bins/deletions.bed'
 
     allChr = [['18']]
     # allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
     #     '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
 
     # for curChr in allChr:
-    #     parse(f_all_mq, curChr)
-    #     parse(f_lumpy, curChr)
+    #     parse(f_2, curChr)
 
     wholeGenom = [x for sublist in allChr for x in sublist]
     # parse(f_softsv, wholeGenom)
@@ -238,9 +244,12 @@ def main():
     # parse(f_sc, wholeGenom)
     # parse(f_split, wholeGenom)
     # parse(f_split_mq, wholeGenom)
-    parse(f_1, wholeGenom)
-    parse(f_2, wholeGenom)
+    # parse(f_1, wholeGenom)
+    # parse(f_2, wholeGenom)
     parse(f_3, wholeGenom)
+    parse(f_3_1, wholeGenom)
+    parse(f_3_2, wholeGenom)
+    # parse(f_3_nomerge, wholeGenom)
 
     # print(checkOverlap(['22', 43101070, 43102757], ['22', 43101447, 43102198]))
 
