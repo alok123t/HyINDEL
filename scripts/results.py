@@ -226,12 +226,11 @@ def main():
     f_2 = '/Users/alok/tmp/2019/Jan/17/full/deletions.bed'
     f_3 = '/Users/alok/tmp/2019/Jan/22/full/deletions.bed'
     f_3_nomerge = '/Users/alok/tmp/today/s-1.bed'
-    f_3_1 = '/Users/alok/tmp/today/rem_bins/deletions.bed'
-    f_3_2 = '/Users/alok/tmp/today/old_bins/deletions.bed'
+    f_3_1 = '/Users/alok/tmp/today/cov_66/deletions.bed'
 
-    allChr = [['18']]
-    # allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
-    #     '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
+    # allChr = [['18']]
+    allChr = [['1'], ['2'], ['3'], ['4'], ['5'], ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], [
+        '12'], ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'], ['20'], ['21'], ['22'], ['X']]
 
     # for curChr in allChr:
     #     parse(f_2, curChr)
@@ -248,7 +247,6 @@ def main():
     # parse(f_2, wholeGenom)
     parse(f_3, wholeGenom)
     parse(f_3_1, wholeGenom)
-    parse(f_3_2, wholeGenom)
     # parse(f_3_nomerge, wholeGenom)
 
     # print(checkOverlap(['22', 43101070, 43102757], ['22', 43101447, 43102198]))
