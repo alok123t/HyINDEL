@@ -5,12 +5,19 @@
 
 ## Requirements
 * [CMake](https://cmake.org/download/)
+* [Bedtools](https://bedtools.readthedocs.io/en/latest/content/installation.html)
+* [Mosdepth](https://github.com/brentp/mosdepth#installation)
 
 ## Installation
 ```shell
 git clone --recursive https://github.com/alok123t/indel-detect.git
 cd indel-detect && mkdir -p build && cd build
 cmake .. && make -j4 && make test
+```
+
+```shell
+conda install -c bioconda bedtools samtools
+conda install mosdepth
 ```
 
 ## Usage
@@ -20,13 +27,15 @@ bin/indel --help
 
 ### Example
 ```shell
-mkdir -p /Users/alok/tmp
-# Create filtered bam file 
-bin/bamtools filter -in ../test/test.bam -script ../scripts/filter.json -out ../test/test_filter.bam
-# Index filtered bam file
-bin/bamtools index -in ../test/test_filter.bam
+cd /path/to/indel-detect
+# Create output directory
+mkdir output
+# Pre-process
+bash scripts/preProcess.sh ../test/test_filter.bam output
 # Run program
-bin/indel -s 300 -d 3 --inp=/path/to/test_filter.bam -o /path/to/outputdir/
+bin/indel -s 300 -d 3 -i ../test/test_filter.bam -o output
+# Post-process
+bash scripts/postProcess.sh ../test/test_filter.bam output 30 15 10 15 20
 ```
 
 | Options Short | Options Long | Description | Attributes | Mandatory |
