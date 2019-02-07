@@ -16,3 +16,7 @@ include_directories( "${CMAKE_SOURCE_DIR}/external/transwarp/src" )
 add_executable( indel ${SOURCES} )
 target_link_libraries( indel Threads::Threads )
 target_link_libraries( indel BamTools )
+
+install( TARGETS indel
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
+    )
