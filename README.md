@@ -13,8 +13,14 @@
 git clone --recursive https://github.com/alok123t/indel-detect.git
 cd indel-detect && mkdir -p build && cd build
 cmake .. && make -j4 && make test
+make install
+```
+For a different install directory, use the following
+```shell
+cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/dir
 ```
 
+### Dependencies
 ```shell
 conda install -c bioconda bedtools samtools
 conda install mosdepth
