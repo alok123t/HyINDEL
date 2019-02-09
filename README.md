@@ -37,7 +37,7 @@ cd /path/to/indel-detect
 # Create output directory
 mkdir output
 # Pre-process
-bash scripts/preProcess.sh -i ../test/test_filter.bam -o output
+bash scripts/preProcess.sh -i ../test/test_filter.bam -o output -m 1
 # Run program
 bin/indel -s 300 -d 3 -i ../test/test_filter.bam -o output
 # Post-process
@@ -49,6 +49,7 @@ bash scripts/postProcess.sh -i ../test/test_filter.bam -o output -c 30 -l 15 -m 
 | --- | --- | --- | --- | 
 | `-i PATH` | Input File | Absolute path | <ul><li>[x] yes</li></ul> |
 | `-o PATH` | Output Folder | Absolute path | <ul><li>[x] yes</li></ul> |
+| `-m VAL` | Use Mosdepth or Samtools for depth | `1` for Mosdepth, `0` for Samtools | <ul><li>[x] yes</li></ul> |
 
 ### Detect parameters
 | Options Short | Options Long | Description | Attributes | Mandatory |
@@ -56,7 +57,7 @@ bash scripts/postProcess.sh -i ../test/test_filter.bam -o output -c 30 -l 15 -m 
 | `-s VAL` | `--insSz=VAL` | Insert Size | Integer | <ul><li>[x] yes</li></ul> |
 | `-d VAL` | `--stdDev=VAL` | Standard Deviation | Integer | <ul><li>[x] yes</li></ul> |
 | `-i PATH` | `--inp=PATH` | Input Files | Absolute path, comma seperated | <ul><li>[x] yes</li></ul> |
-| `-o PATH` | `--out=PATH` | Output Folder | Path, folder should exist | <ul><li>[x] yes</li></ul> |
+| `-o PATH` | `--out=PATH` | Output Folder | Absolute Path, folder should exist | <ul><li>[x] yes</li></ul> |
 | `-t VAL` | `--threads=VAL` | Threads | Integer, minimum `1` | <ul><li>[ ] no</li></ul> |
 | `-v VAL` | `--verbose=VAL` | Verbose | Bool, `0` or `1` | <ul><li>[ ] no</li></ul> |
 
