@@ -3,6 +3,6 @@
 
 #include "OutputWriter.hpp"
 
-void processInput(const std::string inpFilePath, const int mean, const int stdDev, const std::string outFolderPath, const bool verbose, const unsigned int threads);
+void processInput(const std::string inpFilePath, const int mean, const int stdDev, const int readLen, const std::string outFolderPath, const bool verbose, const unsigned int threads);
 
 #endif // INPUTREADER_HPP
