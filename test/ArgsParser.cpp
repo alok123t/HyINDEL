@@ -2,11 +2,10 @@
 
 #include <cassert>
 
-int main() {
-    const std::string inpPaths = "/Users/tmp/1.bam,2.bam,/Users/3.bam";
-    std::vector<std::string> filePaths;
-    splitFilePaths(inpPaths, filePaths);
-    std::vector<std::string> expPaths = {"/Users/tmp/1.bam", "2.bam", "/Users/3.bam"};
-    assert(filePaths == expPaths);
+int main()
+{
+    const std::string inpFile = "/Users/tmp/1.bam";
+    bool isTrue = isValidExtension(inpFile);
+    assert(isTrue == true);
     return EXIT_SUCCESS;
 }

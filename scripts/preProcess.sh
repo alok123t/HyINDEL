@@ -71,7 +71,7 @@ fi
 sort -k 4 -n $OUTPUT_FOLDER"cov.regions.bed" >$OUTPUT_FOLDER"tmp0_cov.regions.sort.bed"
 
 # Calculate median of coverage
-MEDIAN=$(awk '{if ($4 != 0) a[i++]=$4} END {x=int((i+1)/2); if (x<(i+1)/2) print(int(a[x-1]+a[x])/2); else print int(a[x-1]);}' $OUTPUT_FOLDER"tmp0_cov.regions.sort.bed")
+MEDIAN=$(awk '{if ($4 != 0) a[i++]=$4} END {x=int((i+1)/2); if (x<(i+1)/2) print(int((a[x-1]+a[x])/2)); else print int(a[x-1]);}' $OUTPUT_FOLDER"tmp0_cov.regions.sort.bed")
 echo "Median:" $MEDIAN
 EXCLUDE_CUTOFF=$(($MEDIAN * 2))
 echo "Exclude Cutoff:" $EXCLUDE_CUTOFF

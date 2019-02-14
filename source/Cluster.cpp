@@ -17,44 +17,16 @@ int main(int argc, char const *argv[])
 	{
 		std::cerr << "Insert size: " << ap.insSz << '\n';
 		std::cerr << "Standard deviation: " << ap.stdDev << '\n';
+		std::cerr << "Read length: " << ap.readLen << '\n';
 
-		std::cerr << "Input files: " << '\n';
-		for (std::string fPath : ap.inpFilePaths)
-		{
-			std::cerr << '\t' << fPath << '\n';
-		}
+		std::cerr << "Input files: " << ap.inpFilePath << '\n';
 
 		std::cerr << "Output folder: " << ap.outFolderPath << '\n';
 
 		std::cerr << "Threads: " << ap.threads << '\n';
 	}
 
-	transwarp::parallel executor{ap.threads};
-
-	std::vector<std::shared_ptr<transwarp::task<void>>> tasks;
-
-	for (std::string fPath : ap.inpFilePaths)
-	{
-		auto inpFileTask = transwarp::make_value_task(fPath);
-		auto meanTask = transwarp::make_value_task(ap.insSz);
-		auto stdDevTask = transwarp::make_value_task(ap.stdDev);
-		auto outFolderTask = transwarp::make_value_task(ap.outFolderPath);
-		auto verboseTask = transwarp::make_value_task(ap.verbose);
-		auto threadsTask = transwarp::make_value_task(ap.threads);
-		auto inputTask = transwarp::make_task(transwarp::consume, processInput, inpFileTask, meanTask, stdDevTask, outFolderTask, verboseTask, threadsTask);
-
-		tasks.emplace_back(inputTask);
-	}
-
-	for (auto task : tasks)
-	{
-		task->schedule(executor);
-	}
-
-	for (auto task : tasks)
-	{
-		task->get();
-	}
+	processInput(ap.inpFilePath, ap.insSz, ap.stdDev, ap.readLen, ap.outFolderPath, ap.verbose, ap.threads);
 
 	std::chrono::steady_clock::time_point timeEnd = std::chrono::steady_clock::now();
 	if (ap.verbose)

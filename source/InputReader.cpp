@@ -1,5 +1,7 @@
 #include "InputReader.hpp"
 
+int intraAlignScore;
+
 bool overlapDiscRange(const DiscNode &r, const std::vector<DiscNode> &nodes)
 {
 	for (int i = 0; i < nodes.size(); i++)
@@ -783,8 +785,10 @@ void parallelProcess(const std::tuple<std::string, int, int> &region, const BamT
 	br.Close();
 }
 
-void processInput(const std::string inpFilePath, const int mean, const int stdDev, const std::string outFolderPath, const bool verbose, const unsigned int threads)
+void processInput(const std::string inpFilePath, const int mean, const int stdDev, const int readLen, const std::string outFolderPath, const bool verbose, const unsigned int threads)
 {
+	intraAlignScore = readLen / 2;
+
 	std::map<std::string, std::vector<std::pair<long, long>>> exRegions;
 	std::string excludeFilePath = outFolderPath + excludeFileName;
 	openExcludeRegions(excludeFilePath, exRegions);

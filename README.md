@@ -22,8 +22,7 @@ cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/dir
 
 ### Dependencies
 ```shell
-conda install -c bioconda bedtools samtools
-conda install mosdepth
+conda install -c bioconda bedtools samtools mosdepth bamtools
 ```
 
 ## Usage
@@ -35,20 +34,20 @@ bin/indel --help
 ```shell
 cd /path/to/indel-detect
 # Create output directory
-mkdir output
+mkdir -p /path/to/output
 # Pre-process
-bash scripts/preProcess.sh -i ../test/test_filter.bam -o output -m 1
+bash scripts/preProcess.sh -i /path/to/input.bam -o /path/to/output -m 1
 # Run program
-bin/indel -s 300 -d 3 -i ../test/test_filter.bam -o output
+bin/indel -i /path/to/input.bam -o /path/to/output -s 300 -d 3 -l 100
 # Post-process
-bash scripts/postProcess.sh -i ../test/test_filter.bam -o output -c 30 -l 15 -m 10 -s 15 -q 20
+bash scripts/postProcess.sh -i /path/to/input.bam -o /path/to/output -c 30 -l 15 -m 10 -s 15 -q 20
 ```
 
 ### PreProcess parameters
 | Options Short | Description | Attributes | Mandatory |
 | --- | --- | --- | --- | 
-| `-i PATH` | Input File | Absolute path | <ul><li>[x] yes</li></ul> |
-| `-o PATH` | Output Folder | Absolute path | <ul><li>[x] yes</li></ul> |
+| `-i PATH` | Input File | Path | <ul><li>[x] yes</li></ul> |
+| `-o PATH` | Output Folder | Path | <ul><li>[x] yes</li></ul> |
 | `-m VAL` | Use Mosdepth or Samtools for depth | `1` for Mosdepth, `0` for Samtools | <ul><li>[x] yes</li></ul> |
 
 ### Detect parameters
@@ -56,16 +55,17 @@ bash scripts/postProcess.sh -i ../test/test_filter.bam -o output -c 30 -l 15 -m 
 | --- | --- | --- | --- | --- |
 | `-s VAL` | `--insSz=VAL` | Insert Size | Integer | <ul><li>[x] yes</li></ul> |
 | `-d VAL` | `--stdDev=VAL` | Standard Deviation | Integer | <ul><li>[x] yes</li></ul> |
-| `-i PATH` | `--inp=PATH` | Input Files | Absolute path, comma seperated | <ul><li>[x] yes</li></ul> |
-| `-o PATH` | `--out=PATH` | Output Folder | Absolute Path, folder should exist | <ul><li>[x] yes</li></ul> |
+| `-l VAL` | `--readLen=VAL` | Read Length | Integer | <ul><li>[x] yes</li></ul> |
+| `-i PATH` | `--inp=PATH` | Input Files | Path | <ul><li>[x] yes</li></ul> |
+| `-o PATH` | `--out=PATH` | Output Folder | Path | <ul><li>[x] yes</li></ul> |
 | `-t VAL` | `--threads=VAL` | Threads | Integer, minimum `1` | <ul><li>[ ] no</li></ul> |
 | `-v VAL` | `--verbose=VAL` | Verbose | Bool, `0` or `1` | <ul><li>[ ] no</li></ul> |
 
 ### PostProcess parameters
 | Options Short | Description | Attributes | Mandatory |
 | --- | --- | --- | --- | 
-| `-i PATH` | Input File | Absolute path | <ul><li>[x] yes</li></ul> |
-| `-o PATH` | Output Folder | Absolute path | <ul><li>[x] yes</li></ul> |
+| `-i PATH` | Input File | Path | <ul><li>[x] yes</li></ul> |
+| `-o PATH` | Output Folder | Path | <ul><li>[x] yes</li></ul> |
 | `-c VAL` | Coverage | Integer | <ul><li>[x] yes</li></ul> |
 | `-l VAL` | Support Large | Integer | <ul><li>[x] yes</li></ul> |
 | `-m VAL` | Support imprecise large | Integer | <ul><li>[x] yes</li></ul> |

@@ -40,7 +40,6 @@ const double alnThreshold = 0.9;
 
 const int interAlignScore = 100; //150*2/3 * 1
 const int interMinAlignScore = 40;
-const int intraAlignScore = 74;
 const int intraMinAlignScore = 20;
 
 const int MIN_SC_CLUSTER_SUPPORT = 3;
