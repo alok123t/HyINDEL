@@ -3,6 +3,7 @@
 const std::string suffixDelsLarge = "tmp1_dels_large.txt";
 const std::string suffixDelsSmall = "tmp1_dels_small.txt";
 const std::string suffixDelsLargeImprecise = "tmp1_dels_large_imprecise.txt";
+const std::string suffixIns = "tmp1_ins.txt";
 
 std::string suffixFn(int outputType)
 {
@@ -12,6 +13,8 @@ std::string suffixFn(int outputType)
 		return suffixDelsSmall;
 	else if (outputType == 2)
 		return suffixDelsLargeImprecise;
+	else if (outputType == 3)
+		return suffixIns;
 	else
 		return std::string();
 }
@@ -19,8 +22,8 @@ std::string suffixFn(int outputType)
 void headerOutput(const std::string outFilePrefix, const int type)
 {
 	std::ofstream ofs;
-	std::string outFileDels = outFilePrefix + suffixFn(type);
-	ofs.open(outFileDels, std::ofstream::out);
+	std::string outFile = outFilePrefix + suffixFn(type);
+	ofs.open(outFile, std::ofstream::out);
 
 	ofs << "#Chr" << '\t' << "Start" << '\t' << "End" << '\t' << "Size" << '\t' << "Support(PE)" << '\t' << "Support(SR)" << '\t' << "Support(SC)" << '\n';
 	ofs.close();
@@ -29,8 +32,8 @@ void headerOutput(const std::string outFilePrefix, const int type)
 void parseOutput(const std::string outFilePrefix, const std::vector<OutNode> &output, const int type)
 {
 	std::ofstream ofs;
-	std::string outFileDels = outFilePrefix + suffixFn(type);
-	ofs.open(outFileDels, std::ofstream::out | std::ofstream::app);
+	std::string outFile = outFilePrefix + suffixFn(type);
+	ofs.open(outFile, std::ofstream::out | std::ofstream::app);
 
 	for (OutNode out : output)
 	{

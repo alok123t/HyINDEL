@@ -19,7 +19,7 @@ int main(int argc, char const *argv[])
 		std::cerr << "Standard deviation: " << ap.stdDev << '\n';
 		std::cerr << "Read length: " << ap.readLen << '\n';
 
-		std::cerr << "Input files: " << ap.inpFilePath << '\n';
+		std::cerr << "Input file: " << ap.inpFilePath << '\n';
 
 		std::cerr << "Output folder: " << ap.outFolderPath << '\n';
 

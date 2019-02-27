@@ -1,6 +1,7 @@
 #include "InputReader.hpp"
 
 int intraAlignScore;
+int MIN_LARGE_DEL;
 
 bool overlapDiscRange(const DiscNode &r, const std::vector<DiscNode> &nodes)
 {
@@ -530,6 +531,38 @@ void directDeletions(const std::vector<DirectDelCluster> &clusters, const std::s
 	parseOutput(folderPath, output, 1);
 }
 
+void insertions(const BamTools::RefVector &ref, const std::vector<SoftCluster> &scClustersUp, const std::vector<SoftCluster> &scClustersDown, const std::string &folderPath)
+{
+	std::vector<OutNode> output;
+	for (SoftCluster scUp : scClustersUp)
+	{
+		int stBound = getIdx(scUp.info.scPos + MIN_INS_DIFF_CLUSTERS, scClustersDown);
+		if (stBound == -1)
+			continue;
+
+		int bestIdx = -1, bestSup = 0;
+		for (int i = stBound; i < scClustersDown.size(); ++i)
+		{
+			if (scClustersDown.at(i).info.scPos - scUp.info.scPos > MAX_INS_DIFF_CLUSTERS)
+				break;
+			if (scClustersDown.at(i).info.scPos - scUp.info.scPos < MIN_INS_DIFF_CLUSTERS)
+				continue;
+			int curSup = scUp.nodes.size() + scClustersDown.at(i).nodes.size();
+			if (curSup > bestSup)
+			{
+				bestSup = curSup;
+				bestIdx = i;
+			}
+		}
+		if (bestIdx != -1)
+		{
+			OutNode on(ref.at(scUp.info.refID).RefName, scUp.info.scPos, scClustersDown.at(bestIdx).info.scPos, 0, 0, scUp.nodes.size() + scClustersDown.at(bestIdx).nodes.size());
+			output.emplace_back(on);
+		}
+	}
+	parseOutput(folderPath, output, 3);
+}
+
 void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const int &bpRegion, const bool verbose, const std::map<std::string, std::vector<std::pair<long, long>>> &exRegions, std::vector<DiscCluster> &discClusters, std::vector<SoftCluster> &scClustersUp, std::vector<SoftCluster> &scClustersDown, std::vector<DirectDelCluster> &dDelClusters)
 {
 	std::vector<DiscNode> discNodes;
@@ -775,6 +808,8 @@ void parallelProcess(const std::tuple<std::string, int, int> &region, const BamT
 
 	readInput(br, ref, bpRegion, verbose, exRegions, discClusters, scClustersUp, scClustersDown, dDelClusters);
 
+	insertions(ref, scClustersUp, scClustersDown, outFolderPath);
+
 	// deletionsSR(ref, discClusters, srClusters, inpFilePath, outFolderPath);
 	directDeletions(dDelClusters, outFolderPath);
 
@@ -785,9 +820,10 @@ void parallelProcess(const std::tuple<std::string, int, int> &region, const BamT
 	br.Close();
 }
 
-void processInput(const std::string inpFilePath, const int mean, const int stdDev, const int readLen, const std::string outFolderPath, const bool verbose, const unsigned int threads)
+void processInput(const std::string inpFilePath, const int insSz, const int stdDev, const int readLen, const std::string outFolderPath, const bool verbose, const unsigned int threads)
 {
 	intraAlignScore = readLen / 2;
+	MIN_LARGE_DEL = insSz;
 
 	std::map<std::string, std::vector<std::pair<long, long>>> exRegions;
 	std::string excludeFilePath = outFolderPath + excludeFileName;
@@ -816,10 +852,10 @@ void processInput(const std::string inpFilePath, const int mean, const int stdDe
 		refCo++;
 	}
 
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 4; i++)
 		headerOutput(outFolderPath, i);
 
-	int bpRegion = mean + (3 * stdDev);
+	int bpRegion = insSz + (3 * stdDev);
 
 	transwarp::parallel executor{threads};
 
