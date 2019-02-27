@@ -53,7 +53,6 @@ const int MIN_SPLIT_CO = 3;
 const double DISC_RO = 0.65;
 const int MIN_DISC_CLUSTER_SUPPORT = 3;
 const int MAX_DISC_CLUSTER_DEL_LEN = 50000;
-const int MIN_LARGE_DEL = 500;
 const int MAX_LARGE_DEL_LEN = 20000;
 
 const double DDEL_RO = 0.90;
@@ -61,6 +60,9 @@ const int MIN_DDEL_SUPPORT = 5;
 
 const int MAX_SPLIT_LEN = 512345;
 const int MIN_SPLIT_LEN = 51;
+
+const int MIN_INS_DIFF_CLUSTERS = -5;
+const int MAX_INS_DIFF_CLUSTERS = 5;
 
 const std::string COMMA = ",";
 const std::string SEMICOLON = ";";
