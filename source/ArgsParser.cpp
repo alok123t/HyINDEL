@@ -50,7 +50,7 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
     args::ValueFlag<int> readLen(groupInputFileParams, "readLen", "Read length", {'l', "readLen"});
 
     args::Group groupInputFiles(parser, "Input File", args::Group::Validators::All);
-    args::ValueFlag<std::string> inpFilePaths(groupInputFiles, "inpFile", "Input File", {'i', "inp"});
+    args::ValueFlag<std::string> inpFilePath(groupInputFiles, "inpFile", "Input File", {'i', "inp"});
 
     args::Group groupOutputFolder(parser, "Output Folder", args::Group::Validators::All);
     args::ValueFlag<std::string> outFolderName(groupOutputFolder, "outFolder", "Output Folder", {'o', "out"});
@@ -87,9 +87,9 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
     ap.stdDev = args::get(stdDev);
     ap.readLen = args::get(readLen);
 
-    if (inpFilePaths)
+    if (inpFilePath)
     {
-        ap.inpFilePath = args::get(inpFilePaths);
+        ap.inpFilePath = args::get(inpFilePath);
     }
 
     if (outFolderName)
