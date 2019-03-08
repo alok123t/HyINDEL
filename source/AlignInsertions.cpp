@@ -72,7 +72,7 @@ bool isValidExtension(const std::string &fileName)
     std::size_t foundIdx = fileName.find_last_of(".");
     if (foundIdx != std::string::npos)
     {
-        return fileName.substr(foundIdx) == ".txt";
+        return fileName.substr(foundIdx) == ".fastq";
     }
     else
     {

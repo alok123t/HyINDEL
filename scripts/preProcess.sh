@@ -49,14 +49,6 @@ echo "Output folder:" $OUTPUT_FOLDER
 
 mkdir -p $OUTPUT_FOLDER/tmp_ins
 
-# Extract unmapped reads
-bamtools filter -in $INP_FILE -out $OUTPUT_FOLDER"unmapped.bam" -script "$(dirname "$0")"/filter_unmapped.json
-
-# Convert unmapped bam to fastq
-bamtools convert -in $OUTPUT_FOLDER"unmapped.bam" -out $OUTPUT_FOLDER"unmapped.fastq" -format fastq
-rm $OUTPUT_FOLDER"unmapped.bam"
-echo "Created" $OUTPUT_FOLDER"unmapped.fastq"
-
 # Get chromosome sizes from header
 bamtools header -in $INP_FILE >$OUTPUT_FOLDER"tmp0_chr_sizes.bed"
 

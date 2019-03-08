@@ -531,6 +531,30 @@ void directDeletions(const std::vector<DirectDelCluster> &clusters, const std::s
 	parseOutput(folderPath, output, 1);
 }
 
+void outputFastq(BamTools::BamAlignment &aln, std::ofstream &ofs)
+{
+	std::string name = aln.Name;
+	if (aln.IsPaired())
+		name.append((aln.IsFirstMate() ? "/1" : "/2"));
+
+	std::string qualities = aln.Qualities;
+	std::string sequence = aln.QueryBases;
+	if (aln.IsReverseStrand())
+	{
+		reverse(qualities.begin(), qualities.end());
+
+		std::size_t seqLength = sequence.length();
+		for (std::size_t i = 0; i < seqLength; ++i)
+			sequence.replace(i, 1, 1, REVCOMP_LOOKUP[(int)sequence.at(i) - 65]);
+		reverse(sequence.begin(), sequence.end());
+	}
+
+	ofs << '@' << name << '\n'
+		<< sequence << '\n'
+		<< '+' << '\n'
+		<< qualities << '\n';
+}
+
 void writeReads(BamTools::BamReader &br, int refID, std::string refName, int st, int en, int bpRegion, const std::string scUpSeq, const std::string scDownSeq, int sup1, int sup2, const std::string &folderPath)
 {
 	std::ofstream ofs;
@@ -544,34 +568,27 @@ void writeReads(BamTools::BamReader &br, int refID, std::string refName, int st,
 		<< sup2 << '\n';
 	ofs.close();
 
-	std::string outFile = folderPath + "tmp_ins/" + refName + "_" + std::to_string(st) + ".txt";
+	std::string outFile = folderPath + "tmp_ins/" + refName + "_" + std::to_string(st) + ".fastq";
 	ofs.open(outFile, std::ofstream::out);
 
 	br.SetRegion(refID, st - bpRegion, refID, en + bpRegion);
 	BamTools::BamAlignment aln;
 	while (br.GetNextAlignment(aln))
 	{
+		if (!aln.IsMapped())
+		{
+			outputFastq(aln, ofs);
+			continue;
+		}
+
 		if (aln.MapQuality < MIN_MAP_QUAL)
 			continue;
+
 		std::vector<int> clipSizes, readPositions, genomePositions;
 		bool isSC = aln.GetSoftClips(clipSizes, readPositions, genomePositions);
-
-		std::string name = aln.Name;
-
 		if (isSC)
 		{
-			std::string endTag;
-			if (aln.IsPaired())
-				endTag = aln.IsFirstMate() ? "/1" : "/2";
-			ofs << name << endTag << '\n';
-		}
-		if (!aln.IsMateMapped())
-		{
-			std::string endTag;
-			// write mate name
-			if (aln.IsPaired())
-				endTag = aln.IsFirstMate() ? "/2" : "/1";
-			ofs << name << endTag << '\n';
+			outputFastq(aln, ofs);
 		}
 	}
 

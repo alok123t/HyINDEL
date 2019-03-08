@@ -15,7 +15,6 @@
 // bamtools api
 #include "api/BamReader.h"
 #include "api/BamWriter.h"
-#include "utils/bamtools_utilities.h"
 
 // task concurrency api
 #include "transwarp.h"
@@ -239,5 +238,8 @@ inline void splitTag(const std::vector<std::string> &tags, std::vector<std::vect
         infoTags.emplace_back(infoTag);
     }
 }
+
+const char REVCOMP_LOOKUP[] = {'T', 0, 'G', 'H', 0, 0, 'C', 'D', 0, 0, 0, 0, 'K',
+                               'N', 0, 0, 0, 'Y', 'W', 'A', 'A', 'B', 'S', 'X', 'R', 0};
 
 #endif // MISC_HPP
