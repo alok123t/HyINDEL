@@ -34,7 +34,6 @@ fi
 
 echo "Output folder:" $OUTPUT_FOLDER
 
-for fName in "$OUTPUT_FOLDER"tmp_ins/*.txt; do
-    grep -f $fName -F -A 3 "$OUTPUT_FOLDER"unmapped.fastq | grep -v '^--$' >"${fName%.*}.fastq"
-    $MINIA -verbose 0 -in "${fName%.*}.fastq" -out "${fName%.*}" >>$OUTPUT_FOLDER"tmp_minia_stdout.txt" 2>>$OUTPUT_FOLDER"tmp_minia_stderr.txt"
+for fName in "$OUTPUT_FOLDER"tmp_ins/*.fastq; do
+    $MINIA -verbose 0 -in "${fName}" -out "${fName%.*}" >>$OUTPUT_FOLDER"tmp_minia_stdout.txt" 2>>$OUTPUT_FOLDER"tmp_minia_stderr.txt"
 done
