@@ -15,6 +15,7 @@
 // bamtools api
 #include "api/BamReader.h"
 #include "api/BamWriter.h"
+#include "utils/bamtools_utilities.h"
 
 // task concurrency api
 #include "transwarp.h"

@@ -6,12 +6,12 @@ ONLY_SMALL = False
 FLAG_MAPPABILITY = False
 FILTER_MAPPABILITY = 0.75
 SPLIT_LARGE = 500
-DIST_INS = 5
+DIST_INS = 10
 
 PRINT_MISSING = False
 
 # Reciprocal overlap
-RO = 0.5
+RO = 0.3
 
 """
 This function normalizes chromosome name
@@ -70,6 +70,12 @@ def checkOverlapIns(list_a, list_b):
     if list_a[0] != list_b[0]:
         return False
     return abs(list_a[1] - list_b[1]) <= DIST_INS
+
+
+def checkOverlapInsReal(list_a, list_b):
+    if list_a[0] != list_b[0]:
+        return False
+    return abs(list_b[1]-list_a[1]) <= DIST_INS or abs(list_b[2]-list_a[1]) <= DIST_INS
 
 
 def checkMap(st, en, sc):
@@ -232,10 +238,8 @@ def readSvclassify(fName):
             continue
         st = int(l[1])
         en = int(l[2])
-
         here = [modChr(chr), st, en]
         ret.append(here)
-
     return ret
 
 
@@ -295,6 +299,29 @@ def compare_ins(tool, ref, toolName):
     for i in range(len(tool)):
         for j in range(len(ref)):
             if checkOverlapIns(tool[i], ref[j]):
+                found[j] = True
+
+    num_ref = len(ref)
+    num_tool = len(tool)
+    num_true = sum(found)
+
+    precision = float(1.0 * num_true / num_tool)
+    recall = float(1.0 * num_true / num_ref)
+
+    print(toolName)
+    print('Precision: %.3f' % precision)
+    print('Recall: %.3f' % recall)
+    f_score = float(2.0*precision*recall/(precision+recall))
+    print('F-score: %.3f' % f_score)
+    print('--------------------')
+
+
+def compare_ins_real(tool, ref, toolName):
+    found = [False] * len(ref)
+
+    for i in range(len(tool)):
+        for j in range(len(ref)):
+            if checkOverlapInsReal(tool[i], ref[j]):
                 found[j] = True
 
     num_ref = len(ref)
@@ -449,37 +476,90 @@ def parse(fName, verifyChr):
 
 def main():
     real_lumpy = readLumpy(
-        '/Users/alok/tmp/2019/Feb/19/Results/Real/lumpy_real.vcf')
+        '/Users/alok/tmp/old/2019/Feb/19/Results/Real/lumpy_real.vcf')
     real_tiddit = readTiddit(
-        '/Users/alok/tmp/2019/Feb/19/Results/Real/tiddit_real.vcf')
+        '/Users/alok/tmp/old/2019/Feb/19/Results/Real/tiddit_real.vcf')
     real_svclassify_ref = readSvclassify(
         '/Users/alok/Tools/indel-detect/scripts/GS/Personalis_1000_Genomes_deduplicated_deletions.bed')
+    real_ins_ref = readSvclassify(
+        '/Users/alok/Data/GS/Spiral_Genetics_insertions.bed')
+    # real_ins_my = readMy(
+    #     '/private/var/folders/vs/9f5v0_65787375cktpkd2b540000gn/T/fz3temp-2/tmp1_ins.txt', False)
 
-    sim_dels_lumpy = readLumpy('/Users/alok/tmp/today/out_rg.vcf')
-    sim_dels_tiddit = readTiddit('/Users/alok/tmp/today/out.vcf')
-    sim_dels_softsv = readSoftsv(
-        '/Users/alok/tmp/today/deletions_small.txt', '/Users/alok/tmp/today/deletions.txt')
-    sim_dels_grom = readGrom('/Users/alok/tmp/today/out.SV.vcf', True)
-    sim_ins_grom = readGrom('/Users/alok/tmp/today/out.SV.vcf', False)
-    sim_dels_my = readMy(
-        '/Users/alok/tmp/2019/Feb/19/Results/Simulations/30x/deletions.bed', True)
-    sim_ins_my = readMy('/Users/alok/tmp/2019/Feb/22/30x/tmp1_ins.txt', False)
+    # Simulations benchmark
     sim_dels_ref = readSim(
-        '/Users/alok/tmp/2019/Feb/14/Simulations/sim_ref.bedpe', True)
+        '/Users/alok/tmp/Mar/5/Results/Simulations/sim_ref.bedpe', True)
     sim_ins_ref = readSim(
-        '/Users/alok/tmp/2019/Feb/14/Simulations/sim_ref.bedpe', False)
+        '/Users/alok/tmp/Mar/5/Results/Simulations/sim_ref.bedpe', False)
+    # Lumpy
+    sim_dels_lumpy_5x = readLumpy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/5x/lumpy/lumpy_sim_5x.vcf')
+    sim_dels_lumpy_10x = readLumpy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/10x/lumpy/lumpy_sim_10x.vcf')
+    sim_dels_lumpy_20x = readLumpy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/20x/lumpy/lumpy_sim_20x.vcf')
+    sim_dels_lumpy_30x = readLumpy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/30x/lumpy/lumpy_sim_30x.vcf')
+    # Tiddit
+    sim_dels_tiddit_5x = readTiddit(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/5x/tiddit/tiddit_5x.vcf')
+    sim_dels_tiddit_10x = readTiddit(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/10x/tiddit/tiddit_10x.vcf')
+    sim_dels_tiddit_20x = readTiddit(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/20x/tiddit/tiddit_20x.vcf')
+    sim_dels_tiddit_30x = readTiddit(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/30x/tiddit/tiddit_30x.vcf')
+    # Softsv
+    sim_dels_softsv_5x = readSoftsv('/Users/alok/tmp/Mar/5/Results/Simulations/5x/softsv/deletions_small.txt',
+                                    '/Users/alok/tmp/Mar/5/Results/Simulations/5x/softsv/deletions.txt')
+    sim_dels_softsv_10x = readSoftsv('/Users/alok/tmp/Mar/5/Results/Simulations/10x/softsv/deletions_small.txt',
+                                     '/Users/alok/tmp/Mar/5/Results/Simulations/10x/softsv/deletions.txt')
+    sim_dels_softsv_20x = readSoftsv('/Users/alok/tmp/Mar/5/Results/Simulations/20x/softsv/deletions_small.txt',
+                                     '/Users/alok/tmp/Mar/5/Results/Simulations/20x/softsv/deletions.txt')
+    sim_dels_softsv_30x = readSoftsv('/Users/alok/tmp/Mar/5/Results/Simulations/30x/softsv/deletions_small.txt',
+                                     '/Users/alok/tmp/Mar/5/Results/Simulations/30x/softsv/deletions.txt')
 
-    compare_dels(real_lumpy, real_svclassify_ref, 'REAL-DELS-LUMPY')
-    compare_dels(real_tiddit, real_svclassify_ref, 'REAL-DELS-TIDDIT')
+    # sim_dels_grom = readGrom('/Users/alok/tmp/today/out.SV.vcf', True)
+    # sim_ins_grom = readGrom('/Users/alok/tmp/today/out.SV.vcf', False)
 
-    compare_dels(sim_dels_lumpy, sim_dels_ref, 'SIM-DELS-LUMPY')
-    compare_dels(sim_dels_tiddit, sim_dels_ref, 'SIM-DELS-TIDDIT')
-    compare_dels(sim_dels_softsv, sim_dels_ref, 'SIM-DELS-SOFTSV')
-    compare_dels(sim_dels_grom, sim_dels_ref, 'SIM-DELS-GROM')
-    compare_dels(sim_dels_my, sim_dels_ref, 'SIM-DELS-MY')
+    sim_dels_5x_my = readMy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/5x/my/deletions.bed', True)
+    sim_dels_10x_my = readMy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/10x/my/deletions.bed', True)
+    sim_dels_20x_my = readMy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/20x/my/deletions.bed', True)
+    sim_dels_30x_my = readMy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/30x/my/deletions.bed', True)
+    sim_ins_my = readMy(
+        '/Users/alok/tmp/Mar/5/Results/Simulations/5x/my/tmp1_ins.txt', False)
 
-    compare_ins(sim_ins_grom, sim_ins_ref, 'SIM-INS-GROM')
-    compare_ins(sim_ins_my, sim_ins_ref, 'SIM-INS-MY')
+    # compare_dels(real_lumpy, real_svclassify_ref, 'REAL-DELS-LUMPY')
+    # compare_dels(real_tiddit, real_svclassify_ref, 'REAL-DELS-TIDDIT')
+    # compare_ins_real(real_ins_my, real_ins_ref, 'REAL-INS-MY')
+    # Lumpy simulations
+    compare_dels(sim_dels_lumpy_5x, sim_dels_ref, 'SIM-DELS-LUMPY-5x')
+    compare_dels(sim_dels_lumpy_10x, sim_dels_ref, 'SIM-DELS-LUMPY-10x')
+    compare_dels(sim_dels_lumpy_20x, sim_dels_ref, 'SIM-DELS-LUMPY-20x')
+    compare_dels(sim_dels_lumpy_30x, sim_dels_ref, 'SIM-DELS-LUMPY-30x')
+    # Tiddit simulations
+    compare_dels(sim_dels_tiddit_5x, sim_dels_ref, 'SIM-DELS-TIDDIT-5x')
+    compare_dels(sim_dels_tiddit_10x, sim_dels_ref, 'SIM-DELS-TIDDIT-10x')
+    compare_dels(sim_dels_tiddit_20x, sim_dels_ref, 'SIM-DELS-TIDDIT-20x')
+    compare_dels(sim_dels_tiddit_30x, sim_dels_ref, 'SIM-DELS-TIDDIT-30x')
+    # Softsv simulations
+    compare_dels(sim_dels_softsv_5x, sim_dels_ref, 'SIM-DELS-SOFTSV-5x')
+    compare_dels(sim_dels_softsv_10x, sim_dels_ref, 'SIM-DELS-SOFTSV-10x')
+    compare_dels(sim_dels_softsv_20x, sim_dels_ref, 'SIM-DELS-SOFTSV-20x')
+    compare_dels(sim_dels_softsv_30x, sim_dels_ref, 'SIM-DELS-SOFTSV-30x')
+
+    # compare_dels(sim_dels_grom, sim_dels_ref, 'SIM-DELS-GROM')
+    compare_dels(sim_dels_5x_my, sim_dels_ref, 'SIM-DELS-5x-MY')
+    compare_dels(sim_dels_10x_my, sim_dels_ref, 'SIM-DELS-10x-MY')
+    compare_dels(sim_dels_20x_my, sim_dels_ref, 'SIM-DELS-20x-MY')
+    compare_dels(sim_dels_30x_my, sim_dels_ref, 'SIM-DELS-30x-MY')
+
+    # compare_ins(sim_ins_grom, sim_ins_ref, 'SIM-INS-GROM')
+    # compare_ins(sim_ins_my, sim_ins_ref, 'SIM-INS-MY')
 
     f_softsv = '/Users/alok/Data/30x/results/softsv.txt'
     f_lumpy = '/Users/alok/tmp/today/lumpy_dels.bed'
