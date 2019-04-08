@@ -4,3 +4,5 @@ build/
 .DS_Store
 # VS code
 .vscode/
+# test output
+test/output

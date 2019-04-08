@@ -1,16 +1,16 @@
 set( SOURCES 
-    ${CMAKE_SOURCE_DIR}/source/Cluster.cpp
-    ${CMAKE_SOURCE_DIR}/source/ArgsParser.cpp
-    ${CMAKE_SOURCE_DIR}/source/ArgsParser.hpp
-    ${CMAKE_SOURCE_DIR}/source/InputReader.cpp
-    ${CMAKE_SOURCE_DIR}/source/InputReader.hpp
+    ${CMAKE_SOURCE_DIR}/source/Main.cpp
+    ${CMAKE_SOURCE_DIR}/source/Parser.cpp
+    ${CMAKE_SOURCE_DIR}/source/Parser.hpp
+    ${CMAKE_SOURCE_DIR}/source/Detect.cpp
+    ${CMAKE_SOURCE_DIR}/source/Detect.hpp
     ${CMAKE_SOURCE_DIR}/source/Misc.hpp
-    ${CMAKE_SOURCE_DIR}/source/OutputWriter.cpp
-    ${CMAKE_SOURCE_DIR}/source/OutputWriter.hpp
+    ${CMAKE_SOURCE_DIR}/source/Writer.cpp
+    ${CMAKE_SOURCE_DIR}/source/Writer.hpp
     )
 
 set ( SOURCES_INS
-    ${CMAKE_SOURCE_DIR}/source/AlignInsertions.cpp
+    ${CMAKE_SOURCE_DIR}/source/Insertions.cpp
     )
 
 include_directories( "${CMAKE_SOURCE_DIR}/external/args" )

@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Absolute path to MINIA executable
-MINIA="/Users/alok/Tools/minia/build/bin/minia"
+if [[ -z $PATH_TO_MINIA ]]; then
+    PATH_TO_MINIA="/Users/alok/Tools/minia/build/bin/minia"
+fi
 
 ARGS=$(getopt o:h:: "$*")
 eval set -- "$ARGS"
@@ -32,8 +34,11 @@ if [ $LAST_CHAR_OUT_FOLDER != "/" ]; then
     OUTPUT_FOLDER="${OUTPUT_FOLDER}/"
 fi
 
+echo "[Step3] Assemble insertions start"
 echo "Output folder:" $OUTPUT_FOLDER
 
-for fName in "$OUTPUT_FOLDER"tmp_ins/*.fastq; do
-    $MINIA -verbose 0 -in "${fName}" -out "${fName%.*}" >>$OUTPUT_FOLDER"tmp_minia_stdout.txt" 2>>$OUTPUT_FOLDER"tmp_minia_stderr.txt"
+for fName in "$OUTPUT_FOLDER"tmp/ins/*.fastq; do
+    $PATH_TO_MINIA -verbose 0 -in "${fName}" -out "${fName%.*}" >>$OUTPUT_FOLDER"tmp/minia_stdout.txt" 2>>$OUTPUT_FOLDER"tmp/minia_stderr.txt"
 done
+
+echo "[Step3] Assemble insertions end"

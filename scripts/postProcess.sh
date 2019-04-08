@@ -1,104 +1,153 @@
 #!/bin/bash
 
-function delete_tmp_files() {
-    rm -f $OUTPUT_FOLDER"tmp2_l0.txt" $OUTPUT_FOLDER"tmp2_l1.txt" $OUTPUT_FOLDER"tmp2_l2.txt" $OUTPUT_FOLDER"tmp2_l3.txt" $OUTPUT_FOLDER"tmp2_l4.txt" \
-        $OUTPUT_FOLDER"tmp2_il0.txt" $OUTPUT_FOLDER"tmp2_il1.txt" $OUTPUT_FOLDER"tmp2_il2.txt" $OUTPUT_FOLDER"tmp2_il3.txt" $OUTPUT_FOLDER"tmp2_il4.txt" \
-        $OUTPUT_FOLDER"tmp2_s0.txt" $OUTPUT_FOLDER"tmp2_s1.txt" $OUTPUT_FOLDER"tmp2_s2.txt" $OUTPUT_FOLDER"tmp2_s3.txt" $OUTPUT_FOLDER"tmp2_s4.txt" \
-        $OUTPUT_FOLDER"tmp2_large.bed" $OUTPUT_FOLDER"tmp2_large_imprecise.bed" $OUTPUT_FOLDER"tmp2_small.bed" $OUTPUT_FOLDER"tmp2_dels.bed"
-}
+FLANK_SZ=1000
+MIN_MAPPING_QUALITY=20
 
-ARGS=$(getopt i:o:c:l:m:s:q:h:: "$*")
-eval set -- "$ARGS"
-
-for arg; do
-    case "$arg" in
-    -i)
-        INP_FILE=$2
-        shift 2
-        ;;
-    -o)
-        OUTPUT_FOLDER=$2
-        shift 2
-        ;;
-    -c)
-        COVERAGE=$2
-        shift 2
-        ;;
-    -l)
-        SUPPORT_LARGE=$2
-        shift 2
-        ;;
-    -m)
-        SUPPORT_IMP_LARGE=$2
-        shift 2
-        ;;
-    -s)
-        SUPPORT_SMALL=$2
-        shift 2
-        ;;
-    -q)
-        MAPPING_QUALITY=$2
-        shift 2
-        ;;
-    -h)
-        echo "Usage: bash /path/to/postProcess.sh -i /path/to/inputFile -o /path/to/outputFolder -c COV -l SUPPORT_LARGE -m SUPPORT_IMP_LARGE -s SUPPORT_SMALL -q MAPPING_QUALITY"
-        exit 1
-        ;;
-    --)
-        shift
-        break
-        ;;
-    \?)
-        echo "Invalid option: -$1"
-        exit 0
-        ;;
-    esac
-done
-
-LAST_CHAR_OUT_FOLDER="${OUTPUT_FOLDER: -1}"
-if [ $LAST_CHAR_OUT_FOLDER != "/" ]; then
-    OUTPUT_FOLDER="${OUTPUT_FOLDER}/"
+# e.g., replace with "/path/to/samtools"
+if [[ -z $PATH_TO_SAMTOOLS ]]; then
+    PATH_TO_SAMTOOLS="samtools"
 fi
 
-echo "Input file:" $INP_FILE
-echo "Output folder:" $OUTPUT_FOLDER
-echo "Coverage:" $COVERAGE
-echo "Support Large:" $SUPPORT_LARGE
-echo "Support Imprecise Large:" $SUPPORT_IMP_LARGE
-echo "Support Small:" $SUPPORT_SMALL
-echo "Mapping Quality:" $MAPPING_QUALITY
+function print_usage() {
+    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-c coverage]"
+    echo "  -h, --help  Help"
+    echo "  -i, --inp  Path to input file"
+    echo "  -o, --out  Path to output folder"
+    echo "  -c, --cov  Coverage"
+}
 
-mkdir -p $OUTPUT_FOLDER
+function parse_arguments() {
+    if [[ -z $1 ]]; then
+        print_usage
+        exit
+    else
+        while [ "$1" != "" ]; do
+            case $1 in
+            -h | --help)
+                print_usage
+                exit
+                ;;
+            -i | --inp)
+                shift
+                INP_FILE=$1
+                ;;
+            -o | --out)
+                shift
+                OUT_FOLDER=$1
+                # Add / at end if not present
+                LAST_CHAR_OUT_FOLDER="${OUT_FOLDER: -1}"
+                if [ $LAST_CHAR_OUT_FOLDER != "/" ]; then
+                    OUT_FOLDER="${OUT_FOLDER}/"
+                fi
+                ;;
+            -c | --cov)
+                shift
+                COVERAGE=$1
+                ;;
+            esac
+            shift
+        done
+    fi
+}
+
+function print_arguments() {
+    echo "Input file:" $INP_FILE
+    echo "Output folder:" $OUT_FOLDER
+    echo "Support Large:" $SUPPORT_LARGE
+    echo "Support Imprecise Large:" $SUPPORT_IMP
+    echo "Support Small:" $SUPPORT_SMALL
+    echo "Coverage:" $COVERAGE
+}
+
+function delete_tmp_files() {
+    rm -rf $OUT_FOLDER"tmp/post/"
+}
+
+function filter_support() {
+    EVENTS=$OUT_FOLDER"tmp/dels/"$1
+    FILTER_SUP_EVENTS=$OUT_FOLDER"tmp/post/0_"$1
+    FILTER_DOUBLES=$OUT_FOLDER"tmp/post/0u_"$1
+    cat $EVENTS | awk -v SUP="$2" '{ if($5+$6+$7 >= SUP) { print }}' >$FILTER_SUP_EVENTS
+    sort -u $FILTER_SUP_EVENTS >$FILTER_DOUBLES
+}
+
+function filter_flanks_coverage() {
+    FILTER_DOUBLES=$OUT_FOLDER"tmp/post/0u_"$1
+    SUP_FILE=$OUT_FOLDER"tmp/post/sup_"$1
+    EVENT_FILE=$OUT_FOLDER"tmp/post/1_"$1
+    A_FILE=$OUT_FOLDER"tmp/post/1a_"$1
+    B_FILE=$OUT_FOLDER"tmp/post/1b_"$1
+    COV_EVENT_FILE=$OUT_FOLDER"tmp/post/2_"$1
+    COV_A_FILE=$OUT_FOLDER"tmp/post/2a_"$1
+    COV_B_FILE=$OUT_FOLDER"tmp/post/2b_"$1
+    COV_FINAL=$OUT_FOLDER"tmp/post/3_"$1
+    FILTER_COV_EVENTS=$OUT_FOLDER"tmp/post/4_"$1
+    OUT_FILE=$OUT_FOLDER"tmp/post/out.vcf"
+
+    cat $FILTER_DOUBLES | awk '{ printf("%d\t%d\t%d\n", $5, $6, $7) }' >$SUP_FILE
+    cat $FILTER_DOUBLES | awk -v FLANK="$FLANK_SZ" '{ printf("%s\t%d\t%d\n", $1, $2, $3) }' >$EVENT_FILE
+    cat $FILTER_DOUBLES | awk -v FLANK="$FLANK_SZ" '{ printf("%s\t%d\t%d\n", $1, $2-FLANK, $2) }' >$A_FILE
+    cat $FILTER_DOUBLES | awk -v FLANK="$FLANK_SZ" '{ printf("%s\t%d\t%d\n", $1, $3, $3+FLANK) }' >$B_FILE
+
+    $PATH_TO_SAMTOOLS bedcov -Q $MIN_MAPPING_QUALITY $EVENT_FILE $INP_FILE >$COV_EVENT_FILE
+    $PATH_TO_SAMTOOLS bedcov -Q $MIN_MAPPING_QUALITY $A_FILE $INP_FILE >$COV_A_FILE
+    $PATH_TO_SAMTOOLS bedcov -Q $MIN_MAPPING_QUALITY $B_FILE $INP_FILE >$COV_B_FILE
+
+    paste $COV_EVENT_FILE $COV_A_FILE $COV_B_FILE $SUP_FILE >$COV_FINAL
+
+    awk '{ EV=$4/($3-$2+1); A=$8/1000; B=$12/1000; FL_A=EV/A; FL_B=EV/B; 
+        printf("%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t", $1, $2, $3, $13, $14, $15, EV, A, B);
+        if (FL_A >= 1.0 && FL_B >= 1.0) printf("0\n"); else printf("1\n"); 
+        }' $COV_FINAL >$FILTER_COV_EVENTS
+
+    cat $FILTER_COV_EVENTS | awk -v IMP_FLAG="$2" '{ id+=1;
+        printf("%s\t%d\t%d\t%s\t%s\t%s\t", $1, $2, id, "N", "<DEL>", "."); 
+        if ($10 == 1) printf("PASS\t"); else printf(".\t"); 
+        printf("SVTYPE=DEL;SVLEN=%d;END=%d;SU=%d;PE=%d;SR=%d;SC=%d;COV=%.3f;COV_A=%.3f;COV_B=%.3f;", $3-$2+1, $3, $4+$5+$6, $4, $5, $6, $7, $8, $9);
+        if ($IMP_FLAG == 1) printf("IMPRECISE;");
+        printf("\tSU:PE:SR:SC\t%d:%d:%d:%d\n", $4+$5+$6, $4, $5, $6);
+        }' >>$OUT_FILE
+}
+
+echo "[Step5] Postprocess start"
+
+parse_arguments $@
+
+SUPPORT_LARGE=$(($COVERAGE / 3))
+if [ "$SUPPORT_LARGE" -eq "0" ]; then
+    SUPPORT_LARGE=1
+fi
+SUPPORT_SMALL=$(($COVERAGE / 6))
+if [ "$SUPPORT_SMALL" -eq "0" ]; then
+    SUPPORT_SMALL=1
+fi
+SUPPORT_IMP=$(($COVERAGE / 6))
+if [ "$SUPPORT_IMP" -eq "0" ]; then
+    SUPPORT_IMP=1
+fi
+
+print_arguments
 
 delete_tmp_files
 
-# Large
-sort -u $OUTPUT_FOLDER"tmp1_dels_large.txt" >$OUTPUT_FOLDER"tmp2_l0.txt"
-sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp2_l0.txt" >$OUTPUT_FOLDER"tmp2_l1.txt"
-cat $OUTPUT_FOLDER"tmp2_l1.txt" | awk -v SUP="$SUPPORT_LARGE" '{ if($5+$6+$7 >= SUP) { print }}' >$OUTPUT_FOLDER"tmp2_l2.txt"
-samtools bedcov -Q $MAPPING_QUALITY $OUTPUT_FOLDER"tmp2_l2.txt" $INP_FILE >$OUTPUT_FOLDER"tmp2_l3.txt"
-awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_l3.txt" >$OUTPUT_FOLDER"tmp2_l4.txt"
-bedtools merge -i $OUTPUT_FOLDER"tmp2_l4.txt" >$OUTPUT_FOLDER"tmp2_large.bed"
+mkdir -p $OUT_FOLDER"tmp/post"
 
-# Imprecise Large
-sort -u $OUTPUT_FOLDER"tmp1_dels_large_imprecise.txt" >$OUTPUT_FOLDER"tmp2_il0.txt"
-sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp2_il0.txt" >$OUTPUT_FOLDER"tmp2_il1.txt"
-cat $OUTPUT_FOLDER"tmp2_il1.txt" | awk -v SUP="$SUPPORT_IMP_LARGE" '{ if($5+$6+$7 >= SUP) { print }}' >$OUTPUT_FOLDER"tmp2_il2.txt"
-samtools bedcov -Q $MAPPING_QUALITY $OUTPUT_FOLDER"tmp2_il2.txt" $INP_FILE >$OUTPUT_FOLDER"tmp2_il3.txt"
-awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_il3.txt" >$OUTPUT_FOLDER"tmp2_il4.txt"
-bedtools merge -i $OUTPUT_FOLDER"tmp2_il4.txt" >$OUTPUT_FOLDER"tmp2_large_imprecise.bed"
+filter_support "small.txt" $SUPPORT_SMALL
+filter_flanks_coverage "small.txt" 0
 
-# Small
-sort -u $OUTPUT_FOLDER"tmp1_dels_small.txt" >$OUTPUT_FOLDER"tmp2_s0.txt"
-sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp2_s0.txt" >$OUTPUT_FOLDER"tmp2_s1.txt"
-cat $OUTPUT_FOLDER"tmp2_s1.txt" | awk -v SUP="$SUPPORT_SMALL" '{ if($5+$6+$7 >= SUP) { print }}' >$OUTPUT_FOLDER"tmp2_s2.txt"
-samtools bedcov -Q $MAPPING_QUALITY $OUTPUT_FOLDER"tmp2_s2.txt" $INP_FILE >$OUTPUT_FOLDER"tmp2_s3.txt"
-awk -v COV="$COVERAGE" '{ a[NR]=$0; v[NR]=$NF/$4; if (v[NR] <= COV) {print $0, v[NR] }}' $OUTPUT_FOLDER"tmp2_s3.txt" >$OUTPUT_FOLDER"tmp2_s4.txt"
-bedtools merge -i $OUTPUT_FOLDER"tmp2_s4.txt" >$OUTPUT_FOLDER"tmp2_small.bed"
+filter_support "large.txt" $SUPPORT_LARGE
+filter_flanks_coverage "large.txt" 0
 
-# Merge
-cat $OUTPUT_FOLDER"tmp2_large.bed" $OUTPUT_FOLDER"tmp2_large_imprecise.bed" $OUTPUT_FOLDER"tmp2_small.bed" >$OUTPUT_FOLDER"tmp2_dels.bed"
-sort -u $OUTPUT_FOLDER"tmp2_dels.bed" >$OUTPUT_FOLDER"tmp2_dels_unique.bed"
-sort -k1,1 -k2,2n $OUTPUT_FOLDER"tmp2_dels_unique.bed" >$OUTPUT_FOLDER"deletions.bed"
+filter_support "large_imprecise.txt" $SUPPORT_IMP
+filter_flanks_coverage "large_imprecise.txt" 1
 
-delete_tmp_files
+OUT_FILE=$OUT_FOLDER"tmp/post/out.vcf"
+OUT_SORT_FILE=$OUT_FOLDER"tmp/post/out_sort.vcf"
+FINAL_FILE=$OUT_FOLDER"output.vcf"
+
+sort -k1,1 -k2,2n $OUT_FILE >$OUT_SORT_FILE
+cat $OUT_FOLDER"tmp/pre/header.vcf" >$FINAL_FILE
+echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample" >>$FINAL_FILE
+cat $OUT_SORT_FILE >>$FINAL_FILE
+
+echo "[Step5] Postprocess end"

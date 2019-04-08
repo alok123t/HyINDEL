@@ -1,5 +1,5 @@
-#ifndef ARGSPARSER_HPP
-#define ARGSPARSER_HPP
+#ifndef PARSER_HPP
+#define PARSER_HPP
 
 #include <algorithm>
 #include <iostream>
@@ -17,6 +17,7 @@ struct ArgsParams
     int insSz;
     int stdDev;
     int readLen;
+    double cov;
     std::string inpFilePath;
     std::string outFolderPath;
     unsigned int threads;
@@ -27,4 +28,4 @@ bool isValidExtension(const std::string &fileName);
 
 bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap);
 
-#endif // ARGSPARSER_HPP
+#endif // PARSER_HPP
