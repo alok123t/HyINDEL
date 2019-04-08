@@ -49,13 +49,15 @@ bool parse(int argc, char const *argv[], std::string &outFolderPath)
     {
         outFolderPath += "/";
     }
-    std::string tmpInsFolder = outFolderPath + "tmp_ins/";
+    std::string tmpInsFolder = outFolderPath + "tmp/ins/";
 
-    DIR *dir, *dirIns;
+    DIR *dir;
     dir = opendir(outFolderPath.c_str());
     if (dir != NULL)
     {
         closedir(dir);
+
+        DIR *dirIns;
         dirIns = opendir(tmpInsFolder.c_str());
         if (dirIns != NULL)
         {
@@ -127,7 +129,7 @@ std::tuple<bool, int, int> checkAlign(const std::string &large, const std::strin
     return std::make_tuple(false, -1, -1);
 }
 
-std::tuple<int, std::string> align(const std::string contigSeq, const std::string scSeqUp, const std::string scSeqDown)
+std::tuple<int, std::string> align(const std::string &contigSeq, const std::string &scSeqUp, const std::string &scSeqDown)
 {
     std::string revCompContigSeq;
     revComp(contigSeq, revCompContigSeq);
@@ -142,6 +144,8 @@ std::tuple<int, std::string> align(const std::string contigSeq, const std::strin
     {
         int st = std::get<1>(pUp1);
         int en = std::get<2>(pDown1);
+        if (st >= contigSeq.size())
+            return std::make_tuple(-1, std::string());
         std::string insSeq = contigSeq.substr(st, en - st);
         return std::make_tuple(0, insSeq);
     }
@@ -149,6 +153,8 @@ std::tuple<int, std::string> align(const std::string contigSeq, const std::strin
     {
         int st = std::get<1>(pUp2);
         int en = std::get<2>(pDown2);
+        if (st >= revCompContigSeq.size())
+            return std::make_tuple(-1, std::string());
         std::string insSeq = revCompContigSeq.substr(st, en - st);
         return std::make_tuple(0, insSeq);
     }
@@ -156,12 +162,16 @@ std::tuple<int, std::string> align(const std::string contigSeq, const std::strin
     else if (std::get<0>(pUp1))
     {
         int st = std::get<1>(pUp1);
+        if (st >= contigSeq.size())
+            return std::make_tuple(-1, std::string());
         std::string insSeq = contigSeq.substr(st);
         return std::make_tuple(1, insSeq);
     }
     else if (std::get<0>(pUp2))
     {
         int st = std::get<1>(pUp2);
+        if (st >= revCompContigSeq.size())
+            return std::make_tuple(-1, std::string());
         std::string insSeq = revCompContigSeq.substr(st);
         return std::make_tuple(1, insSeq);
     }
@@ -184,8 +194,8 @@ void readFile(std::ofstream &ofs, std::string &outFolderPath, std::string fName)
 {
     std::size_t foundIdx = fName.find_last_of(".");
     std::string fPrefixName = fName.substr(0, foundIdx);
-    std::string fContigsName = outFolderPath + "tmp_ins/" + fPrefixName + ".contigs.fa";
-    std::string fSeqName = outFolderPath + "tmp_ins/" + fPrefixName + ".seq";
+    std::string fContigsName = outFolderPath + "tmp/ins/" + fPrefixName + ".contigs.fa";
+    std::string fSeqName = outFolderPath + "tmp/ins/" + fPrefixName + ".seq";
 
     std::ifstream ifs;
     ifs.open(fSeqName, std::ifstream::in);
@@ -242,7 +252,7 @@ void traverseFiles(std::ofstream &ofs, std::string &outFolderPath)
 {
     DIR *dir;
     struct dirent *ent;
-    std::string tmpInsFolder = outFolderPath + "tmp_ins/";
+    std::string tmpInsFolder = outFolderPath + "tmp/ins/";
     dir = opendir(tmpInsFolder.c_str());
     if (dir != NULL)
     {
@@ -263,6 +273,7 @@ int main(int argc, char const *argv[])
     std::string outFolderPath;
     if (!parse(argc, argv, outFolderPath))
         return EXIT_FAILURE;
+    std::cerr << "[Step4] Align Insertions start\n";
     std::cerr << "Output folder: " << outFolderPath << '\n';
 
     std::ofstream ofs;
@@ -272,6 +283,8 @@ int main(int argc, char const *argv[])
     traverseFiles(ofs, outFolderPath);
 
     ofs.close();
+
+    std::cerr << "[Step4] Align Insertions end\n";
 
     return EXIT_SUCCESS;
 }

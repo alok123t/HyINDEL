@@ -1,16 +1,16 @@
-#include "OutputWriter.hpp"
+#include "Writer.hpp"
 
-const std::string suffixDelsLarge = "tmp1_dels_large.txt";
-const std::string suffixDelsSmall = "tmp1_dels_small.txt";
-const std::string suffixDelsLargeImprecise = "tmp1_dels_large_imprecise.txt";
-const std::string suffixIns = "tmp1_ins.txt";
+const std::string suffixDelsLarge = "tmp/dels/large.txt";
+const std::string suffixDelsSmall = "tmp/dels/small.txt";
+const std::string suffixDelsLargeImprecise = "tmp/dels/large_imprecise.txt";
+const std::string suffixIns = "tmp/ins.txt";
 
 std::string suffixFn(int outputType)
 {
 	if (outputType == 0)
-		return suffixDelsLarge;
-	else if (outputType == 1)
 		return suffixDelsSmall;
+	else if (outputType == 1)
+		return suffixDelsLarge;
 	else if (outputType == 2)
 		return suffixDelsLargeImprecise;
 	else if (outputType == 3)
@@ -19,7 +19,7 @@ std::string suffixFn(int outputType)
 		return std::string();
 }
 
-void headerOutput(const std::string outFilePrefix, const int type)
+void headerOutput(const std::string &outFilePrefix, const int type)
 {
 	std::ofstream ofs;
 	std::string outFile = outFilePrefix + suffixFn(type);
@@ -29,7 +29,7 @@ void headerOutput(const std::string outFilePrefix, const int type)
 	ofs.close();
 }
 
-void parseOutput(const std::string outFilePrefix, const std::vector<OutNode> &output, const int type)
+void parseOutput(const std::string &outFilePrefix, const std::vector<OutNode> &output, const int type)
 {
 	std::ofstream ofs;
 	std::string outFile = outFilePrefix + suffixFn(type);

@@ -1,4 +1,4 @@
-#include "ArgsParser.hpp"
+#include "Parser.hpp"
 
 const std::string COMMA_DELIM = ",";
 
@@ -24,7 +24,6 @@ void checkFolder(const std::string &folderPath, std::string &outFolderPath)
     }
 
     DIR *dir;
-    struct dirent *ent;
     dir = opendir(outFolderPath.c_str());
 
     if (dir != NULL)
@@ -48,6 +47,7 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
     args::ValueFlag<int> insSz(groupInputFileParams, "insSz", "Insert Size", {'s', "insSz"});
     args::ValueFlag<int> stdDev(groupInputFileParams, "stdDev", "Standard Deviation", {'d', "stdDev"});
     args::ValueFlag<int> readLen(groupInputFileParams, "readLen", "Read length", {'l', "readLen"});
+    args::ValueFlag<double> cov(groupInputFileParams, "cov", "Coverage", {'c', "cov"});
 
     args::Group groupInputFiles(parser, "Input File", args::Group::Validators::All);
     args::ValueFlag<std::string> inpFilePath(groupInputFiles, "inpFile", "Input File", {'i', "inp"});
@@ -86,6 +86,7 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
     ap.insSz = args::get(insSz);
     ap.stdDev = args::get(stdDev);
     ap.readLen = args::get(readLen);
+    ap.cov = args::get(cov);
 
     if (inpFilePath)
     {

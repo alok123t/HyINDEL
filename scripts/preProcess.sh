@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# e.g., replace with "/path/to/mosdepth"
+if [[ -z $PATH_TO_MOSDEPTH ]]; then
+    PATH_TO_MOSDEPTH="mosdepth"
+fi
+
 WINDOW_SIZE=10000000
 OVERLAP_SIZE=20000
 SLIDING_SIZE=$((WINDOW_SIZE - OVERLAP_SIZE))
@@ -7,77 +12,113 @@ SLIDING_SIZE=$((WINDOW_SIZE - OVERLAP_SIZE))
 REMOVE_WINDOW_SIZE=1000
 MOS_THREADS=4
 
-ARGS=$(getopt i:o:h::m: "$*")
-eval set -- "$ARGS"
+SKIP_CALC=0
 
-for arg; do
-    case "$arg" in
-    -i)
-        INP_FILE=$2
-        shift 2
-        ;;
-    -o)
-        OUTPUT_FOLDER=$2
-        shift 2
-        ;;
-    -m)
-        USE_MOSDEPTH=$2
-        shift 2
-        ;;
-    -h)
-        echo "Usage: bash /path/to/preProcess.sh -i /path/to/inputFile -o /path/to/outputFolder -m 1"
-        exit 1
-        ;;
-    --)
-        shift
-        break
-        ;;
-    \?)
-        echo "Invalid option: -$1"
-        exit 0
-        ;;
-    esac
-done
+function print_usage() {
+    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder]"
+    echo "  -h, --help  Help"
+    echo "  -i, --inp  Path to input file"
+    echo "  -o, --out  Path to output folder"
+}
 
-LAST_CHAR_OUT_FOLDER="${OUTPUT_FOLDER: -1}"
-if [ $LAST_CHAR_OUT_FOLDER != "/" ]; then
-    OUTPUT_FOLDER="${OUTPUT_FOLDER}/"
-fi
+function print_vcf_header() {
+    VCF=$OUT_FOLDER"tmp/pre/header.vcf"
+    echo "##fileformat=VCFv4.2" >$VCF
+    echo "##source=indel-detect" >>$VCF
+    echo "##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">" >>$VCF
+    echo "##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">" >>$VCF
+    echo "##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">" >>$VCF
+    echo "##INFO=<ID=SUP,Number=.,Type=Integer,Description="Total number of reads supporting this variant">" >>$VCF
+    echo "##INFO=<ID=PE,Number=.,Type=Integer,Description="Number of paired-end reads supporting this variant">" >>$VCF
+    echo "##INFO=<ID=SR,Number=.,Type=Integer,Description="Number of split reads supporting this variant">" >>$VCF
+    echo "##INFO=<ID=SC,Number=.,Type=Integer,Description="Number of softclip reads supporting this variant">" >>$VCF
+    echo "##INFO=<ID=COV,Number=.,Type=Float,Description="Coverage in between breakpoints">" >>$VCF
+    echo "##ALT=<ID=DEL,Description="Deletion">" >>$VCF
 
-echo "Input file:" $INP_FILE
-echo "Output folder:" $OUTPUT_FOLDER
+    TMP_HEADER=$OUT_FOLDER"tmp/pre/chr_sizes.bed"
+    cat $TMP_HEADER | awk '{ cid=$2;clen=$3;split(cid, cidAr, ":");split(clen, clenAr, ":");if(cidAr[1]=="SN") print("##contig=<ID=" cidAr[2] ",length=" clenAr[2]) ">"}' >>$VCF
+}
 
-mkdir -p $OUTPUT_FOLDER/tmp_ins
+function parse_arguments() {
+    if [[ -z $1 ]]; then
+        print_usage
+        exit
+    else
+        while [ "$1" != "" ]; do
+            case $1 in
+            -h | --help)
+                print_usage
+                exit
+                ;;
+            -i | --inp)
+                shift
+                INP_FILE=$1
+                ;;
+            -o | --out)
+                shift
+                OUT_FOLDER=$1
+                # Add / at end if not present
+                LAST_CHAR_OUT_FOLDER="${OUT_FOLDER: -1}"
+                if [ $LAST_CHAR_OUT_FOLDER != "/" ]; then
+                    OUT_FOLDER="${OUT_FOLDER}/"
+                fi
+                ;;
+            -s)
+                shift
+                SKIP_CALC=$1
+                ;;
+            esac
+            shift
+        done
+    fi
+}
+
+function print_arguments() {
+    echo "Input file:" $INP_FILE
+    echo "Output folder:" $OUT_FOLDER
+}
+
+echo "[Step1] Preprocess start"
+
+parse_arguments $@
+
+print_arguments
+
+mkdir -p $OUT_FOLDER/tmp/ins
+mkdir -p $OUT_FOLDER/tmp/dels
+mkdir -p $OUT_FOLDER/tmp/pre
 
 # Get chromosome sizes from header
-bamtools header -in $INP_FILE >$OUTPUT_FOLDER"tmp0_chr_sizes.bed"
+$(dirname "$0")/bamtools header -in $INP_FILE >$OUT_FOLDER"tmp/pre/chr_sizes.bed"
+
+# Print vcf header
+print_vcf_header
 
 # Divide each chromosome into overlapping windows/bins for variant processing
-cat $OUTPUT_FOLDER"tmp0_chr_sizes.bed" | awk -v WIN_SZ="$WINDOW_SIZE" -v SLD_SZ="$SLIDING_SIZE" '{if ($1 == "@SQ") {split($2,a,":");split($3,b,":"); for (i = 0; i <= b[2]; i+=SLD_SZ) {en=(i+WIN_SZ>b[2])?b[2]:i+WIN_SZ;printf("%s\t%d\t%d\n",a[2],i,en);}}}' >$OUTPUT_FOLDER"chr_windows.bed"
+cat $OUT_FOLDER"tmp/pre/chr_sizes.bed" | awk -v WIN_SZ="$WINDOW_SIZE" -v SLD_SZ="$SLIDING_SIZE" '{if ($1 == "@SQ") {split($2,a,":");split($3,b,":"); for (i = 0; i <= b[2]; i+=SLD_SZ) {en=(i+WIN_SZ>b[2])?b[2]:i+WIN_SZ;printf("%s\t%d\t%d\n",a[2],i,en);}}}' >$OUT_FOLDER"tmp/pre/chr_windows.bed"
 
-# Calculate coverage for each removal window
-if [ $USE_MOSDEPTH = 1 ]; then
-    echo "Using mosdepth for coverage calculation"
-    mosdepth -n --fast-mode -t $MOS_THREADS --by $REMOVE_WINDOW_SIZE $OUTPUT_FOLDER"cov" $INP_FILE
-    gunzip $OUTPUT_FOLDER"cov.regions.bed.gz"
-else
-    echo "Using samtools for coverage calculation"
-    cat $OUTPUT_FOLDER"tmp0_chr_sizes.bed" | awk -v REM_SZ="$REMOVE_WINDOW_SIZE" '{if ($1 == "@SQ") {split($2,a,":");split($3,b,":"); for (i = 0; i <= b[2]; i+=REM_SZ) {en=(i+REM_SZ>b[2])?b[2]:i+REM_SZ;printf("%s\t%d\t%d\n",a[2],i,en);}}}' >$OUTPUT_FOLDER"tmp0_chr_rem_windows.bed"
-    samtools bedcov $OUTPUT_FOLDER"tmp0_chr_rem_windows.bed" $INP_FILE >$OUTPUT_FOLDER"tmp0_cov.regions.bed"
-    awk -v SZ="$REMOVE_WINDOW_SIZE" '{ cov=$4/SZ; {print $1,$2,$3,cov}}' $OUTPUT_FOLDER"tmp0_cov.regions.bed" >$OUTPUT_FOLDER"cov.regions.bed"
+if [ "$SKIP_CALC" -eq "1" ]; then
+    touch $OUT_FOLDER"tmp/pre/remove_chr_windows.bed"
+    exit
 fi
 
+# Calculate coverage for each removal window
+$PATH_TO_MOSDEPTH -n --fast-mode -t $MOS_THREADS --by $REMOVE_WINDOW_SIZE $OUT_FOLDER"tmp/pre/cov" $INP_FILE
+gunzip -c $OUT_FOLDER"tmp/pre/cov.regions.bed.gz" >$OUT_FOLDER"tmp/pre/cov.regions.bed"
+
 # Sort file by coverage
-sort -k 4 -n $OUTPUT_FOLDER"cov.regions.bed" >$OUTPUT_FOLDER"tmp0_cov.regions.sort.bed"
+sort -k 4 -n $OUT_FOLDER"tmp/pre/cov.regions.bed" >$OUT_FOLDER"tmp/pre/cov.regions.sort.bed"
 
 # Calculate median of coverage
-MEDIAN=$(awk '{if ($4 != 0) a[i++]=$4} END {x=int((i+1)/2); if (x<(i+1)/2) print(int((a[x-1]+a[x])/2)); else print int(a[x-1]);}' $OUTPUT_FOLDER"tmp0_cov.regions.sort.bed")
+MEDIAN=$(awk '{if ($4 != 0) a[i++]=$4} END {x=int((i+1)/2); if (x<(i+1)/2) print(int((a[x-1]+a[x])/2)); else print int(a[x-1]);}' $OUT_FOLDER"tmp/pre/cov.regions.sort.bed")
 echo "Median:" $MEDIAN
-EXCLUDE_CUTOFF=$(($MEDIAN * 2))
+EXCLUDE_CUTOFF=$(($MEDIAN * 3))
 echo "Exclude Cutoff:" $EXCLUDE_CUTOFF
 
 # Filter windows by exclude cutoff
-cat $OUTPUT_FOLDER"tmp0_cov.regions.sort.bed" | awk -v EXC="$EXCLUDE_CUTOFF" '{if ($4 >= EXC) {printf("%s\t%d\t%d\n", $1,$2,$3)}}' >$OUTPUT_FOLDER"remove_chr_windows.bed"
+cat $OUT_FOLDER"tmp/pre/cov.regions.sort.bed" | awk -v EXC="$EXCLUDE_CUTOFF" '{if ($4 >= EXC) {printf("%s\t%d\t%d\n", $1,$2,$3)}}' >$OUT_FOLDER"tmp/pre/remove_chr_windows.bed"
 
-# Remove tmp files
-rm -f $OUTPUT_FOLDER"tmp0_chr_sizes.bed" $OUTPUT_FOLDER"tmp0_chr_rem_windows.bed" $OUTPUT_FOLDER"tmp0_cov.regions.bed" $OUTPUT_FOLDER"tmp0_cov.regions.sort.bed" $OUTPUT_FOLDER"cov.regions.bed"
+# Delete large tmp files
+rm $OUT_FOLDER"tmp/pre/cov.regions.bed" $OUT_FOLDER"tmp/pre/cov.regions.sort.bed"
+
+echo "[Step1] Preprocess end"
