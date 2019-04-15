@@ -1,12 +1,9 @@
 #!/bin/bash
 
-# Absolute path to executable e.g., /usr/local/bin/mosdepth
-export PATH_TO_MOSDEPTH=""
-
-export PATH_TO_MINIA=""
+THREADS=1
 
 function print_usage() {
-    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-s insert size] [-d standard deviation] [-l read length] [-c coverage]"
+    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-s insert size] [-d standard deviation] [-l read length] [-c coverage] [-t threads]"
     echo "  -h, --help  Help"
     echo "  -i, --inp  Path to input file"
     echo "  -o, --out  Path to output folder"
@@ -14,6 +11,7 @@ function print_usage() {
     echo "  -d, --stdDev  Median Standard deviation"
     echo "  -l, --readLen  Read length"
     echo "  -c, --cov  Coverage"
+    echo "  -t, --threads  Threads"
 }
 
 function parse_arguments() {
@@ -55,6 +53,10 @@ function parse_arguments() {
             -c | --cov)
                 shift
                 COVERAGE=$1
+                ;;
+            -t | --threads)
+                shift
+                THREADS=$1
                 ;;
             esac
             shift
@@ -131,6 +133,12 @@ function print_arguments() {
             exit
         fi
     fi
+    if [[ $THREADS -gt 0 ]]; then
+        echo "Threads:" $THREADS
+    else
+        echo $THREADS "is invalid"
+        exit
+    fi
 
     if [[ $INVALID_ARG -eq 1 ]]; then
         print_usage
@@ -142,15 +150,12 @@ parse_arguments $@
 
 print_arguments
 
-# Change to directory containing this script
-cd $(dirname $0)
+$(dirname $0)/preProcess -i $INP_FILE -o $OUT_FOLDER
 
-./preProcess -i $INP_FILE -o $OUT_FOLDER
+$(dirname $0)/indel -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN -c $COVERAGE -t $THREADS
 
-./indel -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN
+$(dirname $0)/postProcess -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE
 
-./assembleInsertions -o $OUT_FOLDER
+# ./assembleInsertions -o $OUT_FOLDER
 
-./ins -o $OUT_FOLDER
-
-./postProcess -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE -l 25 -m 15 -s 15 -q 20
+# ./ins -o $OUT_FOLDER
