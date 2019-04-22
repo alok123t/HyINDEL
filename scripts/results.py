@@ -432,37 +432,37 @@ def supPlot(sup):
 def real():
     # Benchmark
     real_dels_svclassify_ref = readSvclassify(
-        '/Users/alok/Data/GS/Personalis_1000_Genomes_deduplicated_deletions.bed', True)
+        '/Users/alok/IIIT/GS/Personalis_1000_Genomes_deduplicated_deletions.bed', True)
     # real_ins_svclassify_ref = readSvclassify(
-    #     '/Users/alok/Data/GS/Spiral_Genetics_insertions.bed', False)
+    #     '/Users/alok/IIIT/GS/Spiral_Genetics_insertions.bed', False)
 
     # Tools
     # ----------------------------------------------------------------------
     # Lumpy
     # -----------------------------------
     real_dels_lumpy = readLumpy(
-        '/Users/alok/Data/Results/Real/lumpy/lumpy_real.vcf')
+        '/Users/alok/IIIT/Results/Real/lumpy/lumpy_real.vcf')
     bpe_lumpy_real, f_lumpy_real, sup_lumpy_real = compare(real_dels_lumpy, real_dels_svclassify_ref,
                                                            'REAL-DELS-LUMPY', True, RO=REAL_RO)
     # ----------------------------------------------------------------------
     # Tiddit
     # -----------------------------------
     real_dels_tiddit = readTiddit(
-        '/Users/alok/Data/Results/Real/tiddit/tiddit_real.vcf')
+        '/Users/alok/IIIT/Results/Real/tiddit/tiddit_real.vcf')
     bpe_tiddit_real, f_tiddit_real, sup_tiddit_real = compare(real_dels_tiddit, real_dels_svclassify_ref,
                                                               'REAL-DELS-TIDDIT', True, RO=REAL_RO)
     # ----------------------------------------------------------------------
     # Softsv
     # -----------------------------------
     real_dels_softsv = readSoftsv(
-        '/Users/alok/Data/Results/Real/softsv/deletions_small.txt', '/Users/alok/Data/Results/Real/softsv/deletions.txt')
+        '/Users/alok/IIIT/Results/Real/softsv/deletions_small.txt', '/Users/alok/IIIT/Results/Real/softsv/deletions.txt')
     bpe_softsv_real, f_softsv_real, sup_softsv_real = compare(real_dels_softsv, real_dels_svclassify_ref,
                                                               'REAL-DELS-SOFTSV', True, RO=REAL_RO)
     # ----------------------------------------------------------------------
     # Minus
     # -----------------------------------
     real_dels_minus = readMinus(
-        '/Users/alok/Data/Results/Real/minus/output.vcf')
+        '/Users/alok/IIIT/Results/Real/minus/output.vcf')
     bpe_minus_real, f_minus_real, sup_minus_real = compare(real_dels_minus, real_dels_svclassify_ref,
                                                            'REAL-DELS-MINUS', True, RO=REAL_RO)
 
@@ -476,21 +476,21 @@ def real():
 
 def sim():
     # Benchmark
-    sim_dels_ref = readSim('/Users/alok/Data/Simulations/sim_ref.bedpe',
-                           '/Users/alok/Data/Simulations/sim_ref.event', '/Users/alok/Data/Simulations/sim_ref.fasta', True)
+    sim_dels_ref = readSim('/Users/alok/IIIT/Simulations/sim_ref.bedpe',
+                           '/Users/alok/IIIT/Simulations/sim_ref.event', '/Users/alok/IIIT/Simulations/sim_ref.fasta', True)
 
     # Tools
     # ----------------------------------------------------------------------
     # Lumpy
     # -----------------------------------
     sim_dels_lumpy_5x = readLumpy(
-        '/Users/alok/Data/Results/Simulations/5x/lumpy/lumpy_sim_5x.vcf')
+        '/Users/alok/IIIT/Results/Simulations/5x/lumpy/lumpy_sim_5x.vcf')
     sim_dels_lumpy_10x = readLumpy(
-        '/Users/alok/Data/Results/Simulations/10x/lumpy/lumpy_sim_10x.vcf')
+        '/Users/alok/IIIT/Results/Simulations/10x/lumpy/lumpy_sim_10x.vcf')
     sim_dels_lumpy_20x = readLumpy(
-        '/Users/alok/Data/Results/Simulations/20x/lumpy/lumpy_sim_20x.vcf')
+        '/Users/alok/IIIT/Results/Simulations/20x/lumpy/lumpy_sim_20x.vcf')
     sim_dels_lumpy_30x = readLumpy(
-        '/Users/alok/Data/Results/Simulations/30x/lumpy/lumpy_sim_30x.vcf')
+        '/Users/alok/IIIT/Results/Simulations/30x/lumpy/lumpy_sim_30x.vcf')
     # -----------------------------------
     compare(sim_dels_lumpy_5x, sim_dels_ref,
             'SIM-DELS-LUMPY-5x', True, RO=SIM_RO)
@@ -504,13 +504,13 @@ def sim():
     # Tiddit
     # -----------------------------------
     sim_dels_tiddit_5x = readTiddit(
-        '/Users/alok/Data/Results/Simulations/5x/tiddit/tiddit_sim_5x.vcf')
+        '/Users/alok/IIIT/Results/Simulations/5x/tiddit/tiddit_sim_5x.vcf')
     sim_dels_tiddit_10x = readTiddit(
-        '/Users/alok/Data/Results/Simulations/10x/tiddit/tiddit_sim_10x.vcf')
+        '/Users/alok/IIIT/Results/Simulations/10x/tiddit/tiddit_sim_10x.vcf')
     sim_dels_tiddit_20x = readTiddit(
-        '/Users/alok/Data/Results/Simulations/20x/tiddit/tiddit_sim_20x.vcf')
+        '/Users/alok/IIIT/Results/Simulations/20x/tiddit/tiddit_sim_20x.vcf')
     sim_dels_tiddit_30x = readTiddit(
-        '/Users/alok/Data/Results/Simulations/30x/tiddit/tiddit_sim_30x.vcf')
+        '/Users/alok/IIIT/Results/Simulations/30x/tiddit/tiddit_sim_30x.vcf')
     # -----------------------------------
     compare(sim_dels_tiddit_5x, sim_dels_ref,
             'SIM-DELS-TIDDIT-5x', True, RO=SIM_RO)
@@ -523,14 +523,14 @@ def sim():
     # ----------------------------------------------------------------------
     # Softsv
     # -----------------------------------
-    sim_dels_softsv_5x = readSoftsv('/Users/alok/Data/Results/Simulations/5x/softsv/deletions_small.txt',
-                                    '/Users/alok/Data/Results/Simulations/5x/softsv/deletions.txt')
-    sim_dels_softsv_10x = readSoftsv('/Users/alok/Data/Results/Simulations/10x/softsv/deletions_small.txt',
-                                     '/Users/alok/Data/Results/Simulations/10x/softsv/deletions.txt')
-    sim_dels_softsv_20x = readSoftsv('/Users/alok/Data/Results/Simulations/20x/softsv/deletions_small.txt',
-                                     '/Users/alok/Data/Results/Simulations/20x/softsv/deletions.txt')
-    sim_dels_softsv_30x = readSoftsv('/Users/alok/Data/Results/Simulations/30x/softsv/deletions_small.txt',
-                                     '/Users/alok/Data/Results/Simulations/30x/softsv/deletions.txt')
+    sim_dels_softsv_5x = readSoftsv('/Users/alok/IIIT/Results/Simulations/5x/softsv/deletions_small.txt',
+                                    '/Users/alok/IIIT/Results/Simulations/5x/softsv/deletions.txt')
+    sim_dels_softsv_10x = readSoftsv('/Users/alok/IIIT/Results/Simulations/10x/softsv/deletions_small.txt',
+                                     '/Users/alok/IIIT/Results/Simulations/10x/softsv/deletions.txt')
+    sim_dels_softsv_20x = readSoftsv('/Users/alok/IIIT/Results/Simulations/20x/softsv/deletions_small.txt',
+                                     '/Users/alok/IIIT/Results/Simulations/20x/softsv/deletions.txt')
+    sim_dels_softsv_30x = readSoftsv('/Users/alok/IIIT/Results/Simulations/30x/softsv/deletions_small.txt',
+                                     '/Users/alok/IIIT/Results/Simulations/30x/softsv/deletions.txt')
     # -----------------------------------
     compare(sim_dels_softsv_5x, sim_dels_ref,
             'SIM-DELS-SOFTSV-5x', True, RO=SIM_RO)
@@ -545,13 +545,13 @@ def sim():
     # Minus
     # -----------------------------------
     sim_dels_minus_5x = readMinus(
-        '/Users/alok/Data/Results/Simulations/5x/minus/output.vcf')
+        '/Users/alok/IIIT/Results/Simulations/5x/minus/output.vcf')
     sim_dels_minus_10x = readMinus(
-        '/Users/alok/Data/Results/Simulations/10x/minus/output.vcf')
+        '/Users/alok/IIIT/Results/Simulations/10x/minus/output.vcf')
     sim_dels_minus_20x = readMinus(
-        '/Users/alok/Data/Results/Simulations/20x/minus/output.vcf')
+        '/Users/alok/IIIT/Results/Simulations/20x/minus/output.vcf')
     sim_dels_minus_30x = readMinus(
-        '/Users/alok/Data/Results/Simulations/30x/minus/output.vcf')
+        '/Users/alok/IIIT/Results/Simulations/30x/minus/output.vcf')
     # -----------------------------------
     compare(sim_dels_minus_5x, sim_dels_ref,
             'SIM-DELS-MINUS-5x', True, RO=SIM_RO)
@@ -577,9 +577,38 @@ def sim():
         plt.show()
 
 
+def find_missing_tool(tool, ref):
+    for i in range(len(tool)):
+        if not tool[i]:
+            print(ref[i].chr, ref[i].st, ref[i].en, ref[i].en-ref[i].st+1)
+
+
+def find_negatives(tool, ref, RO):
+    for i in range(len(tool)):
+        if tool[i].en - tool[i].st + 1 < 50:
+            continue
+        found = False
+        for j in range(len(ref)):
+            if checkDel(tool[i], ref[j], RO):
+                found = True
+        if not found:
+            print(tool[i].chr, tool[i].st, tool[i].en, tool[i].en -
+                  tool[i].st+1, tool[i].pe, tool[i].sr, tool[i].sc)
+
+
+def real_minus_missing():
+    real_dels_svclassify_ref = readSvclassify(
+        '/Users/alok/IIIT/GS/Personalis_1000_Genomes_deduplicated_deletions.bed', True)
+    real_dels_minus = readMinus(
+        '/Users/alok/IIIT/Results/Real/minus/output.vcf')
+    find_negatives(real_dels_minus, real_dels_svclassify_ref, RO=REAL_RO)
+
+
 def main():
-    real()
-    sim()
+    # real_minus_missing()
+    # real()
+    # sim()
+    return
 
 
 if __name__ == '__main__':

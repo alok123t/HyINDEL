@@ -3,21 +3,20 @@
 [![Build Status](https://travis-ci.com/alok123t/indel-detect.svg?token=4hAKK2irggAzvcM7yK4z&branch=master)](https://travis-ci.com/alok123t/indel-detect)
 [![Cpp Standard](https://img.shields.io/badge/C%2B%2B-11-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B11)
 
-## Requirements
+## Installation
+### Requirements
 * [CMake](https://cmake.org/download/)
 * [Mosdepth](https://github.com/brentp/mosdepth#installation)
 * [Samtools](https://github.com/samtools/samtools#building-samtools)
 
-### Dependencies
 ```shell
 conda install -c bioconda mosdepth samtools
 ```
 
-## Installation
-
 Note: 
 * Edit path to mosdepth and samtools before installation in `scripts/preProcess.sh` and `scripts/postProcess.sh` (if installed from source, ignore if installed using conda)
 * Will install/replace bamtools if already present in installation directory
+
 ```shell
 git clone --recursive https://github.com/alok123t/indel-detect.git
 cd indel-detect && mkdir -p build && cd build
@@ -25,7 +24,7 @@ cmake .. && make -j 4 install
 ```
 For a different install directory, use the following
 ```shell
-cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/dir && make -j 4 install
+cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/install/dir && make -j 4 install
 ```
 
 ## Usage
