@@ -16,7 +16,7 @@ const double alnThreshold = 0.9;
 
 bool parse(int argc, char const *argv[], std::string &outFolderPath)
 {
-    args::ArgumentParser parser("This program identifies do-novo insertions in NGS data");
+    args::ArgumentParser parser("This program identifies insertions in NGS data");
     args::HelpFlag help(parser, "help", "Help menu", {'h', "help"});
 
     args::Group groupOutputFolder(parser, "Output Folder", args::Group::Validators::All);
@@ -273,7 +273,7 @@ int main(int argc, char const *argv[])
     std::string outFolderPath;
     if (!parse(argc, argv, outFolderPath))
         return EXIT_FAILURE;
-    std::cerr << "[Step4] Align Insertions start\n";
+    std::cerr << "[Step5] Align Insertions start\n";
     std::cerr << "Output folder: " << outFolderPath << '\n';
 
     std::ofstream ofs;
@@ -284,7 +284,7 @@ int main(int argc, char const *argv[])
 
     ofs.close();
 
-    std::cerr << "[Step4] Align Insertions end\n";
+    std::cerr << "[Step5] Align Insertions end\n";
 
     return EXIT_SUCCESS;
 }

@@ -14,7 +14,7 @@ conda install -c bioconda mosdepth samtools
 ```
 
 Note: 
-* Edit path to mosdepth and samtools before installation in `scripts/preProcess.sh` and `scripts/postProcess.sh` (if installed from source, ignore if installed using conda)
+* Edit path to mosdepth and samtools before installation in `scripts/pm-preProcess.sh` and `scripts/pm-postProcess.sh` (if installed from source, ignore if installed using conda)
 * Will install/replace bamtools if already present in installation directory
 
 ```shell
@@ -39,6 +39,8 @@ plusminus -i ../test/input.bam -o ../test/output -s 350 -d 50 -l 100 -c 5 -t 4
 
 ### Output
 `output.vcf` file is created in output directory
+
+Output directory will be created, if it doesn't exist
 
 ### Parameters
 | Options Short | Options Long | Description | Attributes | Mandatory |

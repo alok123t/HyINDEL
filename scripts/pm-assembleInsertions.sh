@@ -34,11 +34,14 @@ if [ $LAST_CHAR_OUT_FOLDER != "/" ]; then
     OUTPUT_FOLDER="${OUTPUT_FOLDER}/"
 fi
 
-echo "[Step3] Assemble insertions start"
+echo "[Step4] Assemble insertions start"
 echo "Output folder:" $OUTPUT_FOLDER
 
 for fName in "$OUTPUT_FOLDER"tmp/ins/*.fastq; do
-    $PATH_TO_MINIA -verbose 0 -in "${fName}" -out "${fName%.*}" >>$OUTPUT_FOLDER"tmp/minia_stdout.txt" 2>>$OUTPUT_FOLDER"tmp/minia_stderr.txt"
+    echo "${fName}"
+    $PATH_TO_MINIA -verbose 0 -in "${fName}" -out "${fName%.*}" >$OUTPUT_FOLDER"tmp/minia_stdout.txt" 2>$OUTPUT_FOLDER"tmp/minia_stderr.txt"
+    # Remove tmp files
+    rm "${fName%.*}".h5 "${fName%.*}".unitigs*
 done
 
-echo "[Step3] Assemble insertions end"
+echo "[Step4] Assemble insertions end"

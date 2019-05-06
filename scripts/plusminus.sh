@@ -96,7 +96,7 @@ function print_arguments() {
         if [[ $INS_SZ -gt 0 ]]; then
             echo "Insert size:" $INS_SZ
         else
-            echo $INS_SZ "is invalid"
+            echo "Insert size" $INS_SZ "is invalid"
             exit
         fi
     fi
@@ -107,7 +107,7 @@ function print_arguments() {
         if [[ $STD_DEV -gt 0 ]]; then
             echo "Standard deviation:" $STD_DEV
         else
-            echo $STD_DEV "is invalid"
+            echo "Standard deviation" $STD_DEV "is invalid"
             exit
         fi
     fi
@@ -118,7 +118,7 @@ function print_arguments() {
         if [[ $READ_LEN -gt 0 ]]; then
             echo "Read length:" $READ_LEN
         else
-            echo $READ_LEN "is invalid"
+            echo "Read length" $READ_LEN "is invalid"
             exit
         fi
     fi
@@ -129,14 +129,14 @@ function print_arguments() {
         if [[ $COVERAGE -gt 0 ]]; then
             echo "Coverage:" $COVERAGE
         else
-            echo $COVERAGE "is invalid"
+            echo "Coverage" $COVERAGE "is invalid"
             exit
         fi
     fi
     if [[ $THREADS -gt 0 ]]; then
         echo "Threads:" $THREADS
     else
-        echo $THREADS "is invalid"
+        echo "Threads" $THREADS "is invalid"
         exit
     fi
 
@@ -150,12 +150,12 @@ parse_arguments $@
 
 print_arguments
 
-$(dirname $0)/preProcess -i $INP_FILE -o $OUT_FOLDER
+$(dirname $0)/pm-preProcess -i $INP_FILE -o $OUT_FOLDER
 
-$(dirname $0)/indel -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN -c $COVERAGE -t $THREADS
+$(dirname $0)/pm-dels -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN -c $COVERAGE -t $THREADS
 
-$(dirname $0)/postProcess -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE
+$(dirname $0)/pm-postProcess -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE
 
-# ./assembleInsertions -o $OUT_FOLDER
+# $(dirname $0)/pm-assembleInsertions -o $OUT_FOLDER
 
-# ./ins -o $OUT_FOLDER
+# $(dirname $0)/pm-ins -o $OUT_FOLDER

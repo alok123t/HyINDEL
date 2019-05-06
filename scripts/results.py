@@ -16,8 +16,9 @@ SPLIT_LARGE = 500
 # Maximum error in breakpoint for insertions
 DIST_INS = 10
 # Reciprocal overlap
-SIM_RO = 0.8
+SIM_RO = 0.5
 REAL_RO = 0.5
+GT_METRIC = False
 
 """
 This function normalizes chromosome name
@@ -71,7 +72,7 @@ def checkIns(a, b):
 
 
 class Deletion:
-    def __init__(self, t_chr, t_st, t_en, t_iD=-1, t_pe=-1, t_sc=-1, t_sr=-1):
+    def __init__(self, t_chr, t_st, t_en, t_iD=-1, t_pe=-1, t_sc=-1, t_sr=-1, t_isHomo="N/A"):
         self.chr = modChr(t_chr)
         self.st = t_st
         self.en = t_en
@@ -79,13 +80,14 @@ class Deletion:
         self.pe = t_pe
         self.sc = t_sc
         self.sr = t_sr
+        self.isHomo = t_isHomo
 
     def __str__(self):
         return self.chr+'\t' + str(self.st)+'\t' + str(self.en)
 
 
 class Insertion:
-    def __init__(self, t_chr, t_pos, t_seq='', t_seqLen=-1, t_refPos=-1, t_iD=-1, t_sc=-1):
+    def __init__(self, t_chr, t_pos, t_seq='', t_seqLen=-1, t_refPos=-1, t_iD=-1, t_sc=-1, t_isHomo=True):
         self.chr = modChr(t_chr)
         self.pos = t_pos  # Position on reference
         self.seq = t_seq
@@ -93,28 +95,10 @@ class Insertion:
         self.refPos = t_refPos  # Position on sample
         self.iD = t_iD
         self.sc = t_sc
+        self.isHomo = t_isHomo
 
     def __str__(self):
         return self.chr+'\t' + str(self.pos)
-
-
-def readMy(fName, delsFlag):
-    inp = open(fName)
-    lines = inp.readlines()
-    inp.close()
-
-    ret = []
-    for line in lines:
-        if line[0] == '#':
-            continue
-        l = line.split()
-        if delsFlag:
-            ret.append(Deletion(t_chr=l[0], t_st=int(l[1]), t_en=int(l[2])))
-        else:
-            ret.append(Insertion(t_chr=l[0], t_pos=int(l[1])))
-            ret.append(Insertion(t_chr=l[0], t_pos=int(l[2])))
-
-    return ret
 
 
 def readMinus(fName):
@@ -133,12 +117,18 @@ def readMinus(fName):
         if l[6] != 'PASS':
             continue
         format_col = l[9].split(':')
-        sup_pe = int(format_col[1])
-        sup_sr = int(format_col[2])
-        sup_sc = int(format_col[3])
+        gt = format_col[0]
+        isHomo = "N/A"
+        if gt == '1/1':
+            isHomo = True
+        elif gt == '0/1':
+            isHomo = False
+        sup_pe = int(format_col[2])
+        sup_sr = int(format_col[3])
+        sup_sc = int(format_col[4])
 
         ret.append(Deletion(t_chr=l[0], t_st=int(
-            l[1]), t_en=int(info_col[2].split('=')[1]), t_pe=sup_pe, t_sc=sup_sc, t_sr=sup_sr))
+            l[1]), t_en=int(info_col[2].split('=')[1]), t_pe=sup_pe, t_sc=sup_sc, t_sr=sup_sr, t_isHomo=isHomo))
 
     return ret
 
@@ -176,8 +166,6 @@ def readTiddit(fName):
             continue
         l = line.split()
         if l[4] != '<DEL>':
-            continue
-        if l[6] != 'PASS':
             continue
         info_col = l[7].split(';')
         format_col = l[9].split(':')
@@ -235,39 +223,26 @@ def readSvclassify(fName, delsFlag):
     return ret
 
 
-def readSim(bedpeFName, eventFName, fastaFName, delsFlag):
-    inp = open(bedpeFName)
+def readSim(fName, delsFlag):
+    inp = open(fName)
     lines = inp.readlines()
     inp.close()
 
     ret = []
-    for line in lines:
-        l = line.split()
-        if l[0] == 'LITERAL':
-            continue
-        if delsFlag:
-            if 'DEL' in l[6]:
-                ret.append(
-                    Deletion(t_chr=l[0], t_st=int(l[2]), t_en=int(l[5])))
+    for i in range(len(lines)):
+        l = lines[i].split()
+
+        isHomo = True
+        if i >= 1000:
+            isHomo = False
+        if l[0] == 'DELL':
+            if delsFlag:
+                ret.append(Deletion(t_chr=l[1], t_st=int(
+                    l[2]), t_en=int(l[3]), t_isHomo=isHomo))
         else:
-            if 'INC' in l[6]:
-                ret.append(Insertion(t_chr=l[0], t_pos=int(
-                    l[2]), t_iD=l[6].split('::')[1]))
-
-    if not delsFlag:
-        inp = open(eventFName)
-        lines = inp.readlines()
-        inp.close()
-
-        for line in lines:
-            l = line.split()
-            if l[1] == 'INC':
-                t_iD = l[0]
-                for i in range(len(ret)):
-                    if ret[i].iD == modChr(t_iD):
-                        ret[i].seqLen = int(l[2])
-                        ret[i].refPos = int(l[4])
-                        break
+            if not delsFlag:
+                ret.append(Insertion(t_chr=l[1], t_pos=int(
+                    l[2]), t_seq=l[4]), t_isHomo=isHomo)
 
     return ret
 
@@ -296,6 +271,8 @@ def compare(toolUnfiltered, ref, toolName, delsFlag, RO=0.5):
 
     dis = []
     sup = []
+    gt_true = 0
+    gt_false = 0
     for i in range(len(tool)):
         for j in range(len(ref)):
             if delsFlag:
@@ -304,6 +281,11 @@ def compare(toolUnfiltered, ref, toolName, delsFlag, RO=0.5):
                     dis.append(abs(tool[i].en - ref[j].en) +
                                abs(tool[i].st - ref[j].st))
                     exact_sup = tool[i].sc + tool[i].sr
+                    if GT_METRIC:
+                        if tool[i].isHomo == ref[j].isHomo:
+                            gt_true += 1
+                        else:
+                            gt_false += 1
                     if exact_sup > 0:
                         sup.append(exact_sup)
             else:
@@ -319,10 +301,10 @@ def compare(toolUnfiltered, ref, toolName, delsFlag, RO=0.5):
     # print('Found: ', num_true)
 
     precision = float(100 * num_true / num_tool)
-    recall = float(100*num_true / num_ref)
+    recall = float(100 * num_true / num_ref)
     fScore = float(2 * precision*recall/(precision+recall))
-
     print('P: %.3f R: %.3f F: %.3f' % (precision, recall, fScore))
+
     if PRINT_SPLIT and delsFlag:
         tool_large = tool_small = ref_large = ref_small = num_large = num_small = 0
         for i in range(len(tool)):
@@ -345,34 +327,19 @@ def compare(toolUnfiltered, ref, toolName, delsFlag, RO=0.5):
         split_re_large = float(100 * num_large / ref_large)
         split_f_large = float(
             2 * split_pr_large * split_re_large / (split_pr_large + split_re_large))
-        print('Large P: %.3f R: %.3f F: %.3f' %
-              (split_pr_large, split_re_large, split_f_large))
         split_pr_small = float(100 * num_small / tool_small)
         split_re_small = float(100 * num_small / ref_small)
         split_f_small = float(
             2 * split_pr_small * split_re_small / (split_pr_small + split_re_small))
         print('Small P: %.3f R: %.3f F: %.3f' %
               (split_pr_small, split_re_small, split_f_small))
+        print('Large P: %.3f R: %.3f F: %.3f' %
+              (split_pr_large, split_re_large, split_f_large))
+    if GT_METRIC:
+        print('GT: %.3f' % (gt_true/(gt_true + gt_false)))
     print('-' * 27)
 
     return dis, found, sup
-
-
-def find_missing(a, b, ref, toolA, toolB):
-    pre_a = []
-    pre_b = []
-    print('A: ', sum(a))
-    print('B: ', sum(b))
-    for i in range(len(a)):
-        if a[i] & (not b[i]):
-            pre_a.append(i)
-        elif (not a[i]) & b[i]:
-            pre_b.append(i)
-    print('Only in', toolA, ': ', len(pre_a))
-    print('Only in', toolB, ': ', len(pre_b))
-    # for x in pre_a:
-    #     if x not in pre_b:
-    #         print(ref[x].chr, ref[x].st, ref[x].en, ref[x].en-ref[x].st+1)
 
 
 def bpePlot(xlabel, bpe):
@@ -441,28 +408,28 @@ def real():
     # Lumpy
     # -----------------------------------
     real_dels_lumpy = readLumpy(
-        '/Users/alok/IIIT/Results/Real/lumpy/lumpy_real.vcf')
+        '/Users/alok/IIIT/Real/Results/lumpy/lumpy_real.vcf')
     bpe_lumpy_real, f_lumpy_real, sup_lumpy_real = compare(real_dels_lumpy, real_dels_svclassify_ref,
                                                            'REAL-DELS-LUMPY', True, RO=REAL_RO)
     # ----------------------------------------------------------------------
     # Tiddit
     # -----------------------------------
     real_dels_tiddit = readTiddit(
-        '/Users/alok/IIIT/Results/Real/tiddit/tiddit_real.vcf')
+        '/Users/alok/IIIT/Real/Results/tiddit/tiddit_real.vcf')
     bpe_tiddit_real, f_tiddit_real, sup_tiddit_real = compare(real_dels_tiddit, real_dels_svclassify_ref,
                                                               'REAL-DELS-TIDDIT', True, RO=REAL_RO)
     # ----------------------------------------------------------------------
     # Softsv
     # -----------------------------------
     real_dels_softsv = readSoftsv(
-        '/Users/alok/IIIT/Results/Real/softsv/deletions_small.txt', '/Users/alok/IIIT/Results/Real/softsv/deletions.txt')
+        '/Users/alok/IIIT/Real/Results/softsv/deletions_small.txt', '/Users/alok/IIIT/Real/Results/softsv/deletions.txt')
     bpe_softsv_real, f_softsv_real, sup_softsv_real = compare(real_dels_softsv, real_dels_svclassify_ref,
                                                               'REAL-DELS-SOFTSV', True, RO=REAL_RO)
     # ----------------------------------------------------------------------
     # Minus
     # -----------------------------------
     real_dels_minus = readMinus(
-        '/Users/alok/IIIT/Results/Real/minus/output.vcf')
+        '/Users/alok/IIIT/Real/Results/plusminus/output.vcf')
     bpe_minus_real, f_minus_real, sup_minus_real = compare(real_dels_minus, real_dels_svclassify_ref,
                                                            'REAL-DELS-MINUS', True, RO=REAL_RO)
 
@@ -476,21 +443,20 @@ def real():
 
 def sim():
     # Benchmark
-    sim_dels_ref = readSim('/Users/alok/IIIT/Simulations/sim_ref.bedpe',
-                           '/Users/alok/IIIT/Simulations/sim_ref.event', '/Users/alok/IIIT/Simulations/sim_ref.fasta', True)
+    sim_dels_ref = readSim('/Users/alok/IIIT/Simulations/sim1.txt', True)
 
     # Tools
     # ----------------------------------------------------------------------
     # Lumpy
     # -----------------------------------
     sim_dels_lumpy_5x = readLumpy(
-        '/Users/alok/IIIT/Results/Simulations/5x/lumpy/lumpy_sim_5x.vcf')
+        '/Users/alok/IIIT/Simulations/Results/5x/lumpy/lumpy_sim_5x.vcf')
     sim_dels_lumpy_10x = readLumpy(
-        '/Users/alok/IIIT/Results/Simulations/10x/lumpy/lumpy_sim_10x.vcf')
+        '/Users/alok/IIIT/Simulations/Results/10x/lumpy/lumpy_sim_10x.vcf')
     sim_dels_lumpy_20x = readLumpy(
-        '/Users/alok/IIIT/Results/Simulations/20x/lumpy/lumpy_sim_20x.vcf')
+        '/Users/alok/IIIT/Simulations/Results/20x/lumpy/lumpy_sim_20x.vcf')
     sim_dels_lumpy_30x = readLumpy(
-        '/Users/alok/IIIT/Results/Simulations/30x/lumpy/lumpy_sim_30x.vcf')
+        '/Users/alok/IIIT/Simulations/Results/30x/lumpy/lumpy_sim_30x.vcf')
     # -----------------------------------
     compare(sim_dels_lumpy_5x, sim_dels_ref,
             'SIM-DELS-LUMPY-5x', True, RO=SIM_RO)
@@ -504,13 +470,13 @@ def sim():
     # Tiddit
     # -----------------------------------
     sim_dels_tiddit_5x = readTiddit(
-        '/Users/alok/IIIT/Results/Simulations/5x/tiddit/tiddit_sim_5x.vcf')
+        '/Users/alok/IIIT/Simulations/Results/5x/tiddit/tiddit_sim_5x.vcf')
     sim_dels_tiddit_10x = readTiddit(
-        '/Users/alok/IIIT/Results/Simulations/10x/tiddit/tiddit_sim_10x.vcf')
+        '/Users/alok/IIIT/Simulations/Results/10x/tiddit/tiddit_sim_10x.vcf')
     sim_dels_tiddit_20x = readTiddit(
-        '/Users/alok/IIIT/Results/Simulations/20x/tiddit/tiddit_sim_20x.vcf')
+        '/Users/alok/IIIT/Simulations/Results/20x/tiddit/tiddit_sim_20x.vcf')
     sim_dels_tiddit_30x = readTiddit(
-        '/Users/alok/IIIT/Results/Simulations/30x/tiddit/tiddit_sim_30x.vcf')
+        '/Users/alok/IIIT/Simulations/Results/30x/tiddit/tiddit_sim_30x.vcf')
     # -----------------------------------
     compare(sim_dels_tiddit_5x, sim_dels_ref,
             'SIM-DELS-TIDDIT-5x', True, RO=SIM_RO)
@@ -523,14 +489,14 @@ def sim():
     # ----------------------------------------------------------------------
     # Softsv
     # -----------------------------------
-    sim_dels_softsv_5x = readSoftsv('/Users/alok/IIIT/Results/Simulations/5x/softsv/deletions_small.txt',
-                                    '/Users/alok/IIIT/Results/Simulations/5x/softsv/deletions.txt')
-    sim_dels_softsv_10x = readSoftsv('/Users/alok/IIIT/Results/Simulations/10x/softsv/deletions_small.txt',
-                                     '/Users/alok/IIIT/Results/Simulations/10x/softsv/deletions.txt')
-    sim_dels_softsv_20x = readSoftsv('/Users/alok/IIIT/Results/Simulations/20x/softsv/deletions_small.txt',
-                                     '/Users/alok/IIIT/Results/Simulations/20x/softsv/deletions.txt')
-    sim_dels_softsv_30x = readSoftsv('/Users/alok/IIIT/Results/Simulations/30x/softsv/deletions_small.txt',
-                                     '/Users/alok/IIIT/Results/Simulations/30x/softsv/deletions.txt')
+    sim_dels_softsv_5x = readSoftsv('/Users/alok/IIIT/Simulations/Results/5x/softsv/deletions_small.txt',
+                                    '/Users/alok/IIIT/Simulations/Results/5x/softsv/deletions.txt')
+    sim_dels_softsv_10x = readSoftsv('/Users/alok/IIIT/Simulations/Results/10x/softsv/deletions_small.txt',
+                                     '/Users/alok/IIIT/Simulations/Results/10x/softsv/deletions.txt')
+    sim_dels_softsv_20x = readSoftsv('/Users/alok/IIIT/Simulations/Results/20x/softsv/deletions_small.txt',
+                                     '/Users/alok/IIIT/Simulations/Results/20x/softsv/deletions.txt')
+    sim_dels_softsv_30x = readSoftsv('/Users/alok/IIIT/Simulations/Results/30x/softsv/deletions_small.txt',
+                                     '/Users/alok/IIIT/Simulations/Results/30x/softsv/deletions.txt')
     # -----------------------------------
     compare(sim_dels_softsv_5x, sim_dels_ref,
             'SIM-DELS-SOFTSV-5x', True, RO=SIM_RO)
@@ -545,13 +511,13 @@ def sim():
     # Minus
     # -----------------------------------
     sim_dels_minus_5x = readMinus(
-        '/Users/alok/IIIT/Results/Simulations/5x/minus/output.vcf')
+        '/Users/alok/IIIT/Simulations/Results/5x/plusminus/output.vcf')
     sim_dels_minus_10x = readMinus(
-        '/Users/alok/IIIT/Results/Simulations/10x/minus/output.vcf')
+        '/Users/alok/IIIT/Simulations/Results/10x/plusminus/output.vcf')
     sim_dels_minus_20x = readMinus(
-        '/Users/alok/IIIT/Results/Simulations/20x/minus/output.vcf')
+        '/Users/alok/IIIT/Simulations/Results/20x/plusminus/output.vcf')
     sim_dels_minus_30x = readMinus(
-        '/Users/alok/IIIT/Results/Simulations/30x/minus/output.vcf')
+        '/Users/alok/IIIT/Simulations/Results/30x/plusminus/output.vcf')
     # -----------------------------------
     compare(sim_dels_minus_5x, sim_dels_ref,
             'SIM-DELS-MINUS-5x', True, RO=SIM_RO)
@@ -577,37 +543,9 @@ def sim():
         plt.show()
 
 
-def find_missing_tool(tool, ref):
-    for i in range(len(tool)):
-        if not tool[i]:
-            print(ref[i].chr, ref[i].st, ref[i].en, ref[i].en-ref[i].st+1)
-
-
-def find_negatives(tool, ref, RO):
-    for i in range(len(tool)):
-        if tool[i].en - tool[i].st + 1 < 50:
-            continue
-        found = False
-        for j in range(len(ref)):
-            if checkDel(tool[i], ref[j], RO):
-                found = True
-        if not found:
-            print(tool[i].chr, tool[i].st, tool[i].en, tool[i].en -
-                  tool[i].st+1, tool[i].pe, tool[i].sr, tool[i].sc)
-
-
-def real_minus_missing():
-    real_dels_svclassify_ref = readSvclassify(
-        '/Users/alok/IIIT/GS/Personalis_1000_Genomes_deduplicated_deletions.bed', True)
-    real_dels_minus = readMinus(
-        '/Users/alok/IIIT/Results/Real/minus/output.vcf')
-    find_negatives(real_dels_minus, real_dels_svclassify_ref, RO=REAL_RO)
-
-
 def main():
-    # real_minus_missing()
-    # real()
-    # sim()
+    real()
+    sim()
     return
 
 

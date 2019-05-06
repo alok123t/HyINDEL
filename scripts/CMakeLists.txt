@@ -3,18 +3,18 @@ install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/plusminus.sh
     RENAME plusminus
     )
 
-install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/preProcess.sh
+install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/pm-preProcess.sh
     DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-    RENAME preProcess
+    RENAME pm-preProcess
     )
 
-install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/postProcess.sh
+install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/pm-postProcess.sh
     DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-    RENAME postProcess
+    RENAME pm-postProcess
     )
 
-install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/assembleInsertions.sh
+install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/pm-assembleInsertions.sh
     DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-    RENAME assembleInsertions
+    RENAME pm-assembleInsertions
     )
     

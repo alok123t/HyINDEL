@@ -72,6 +72,7 @@ function filter_support() {
 }
 
 function filter_flanks_coverage() {
+    IMP_FLAG=$2
     FILTER_DOUBLES=$OUT_FOLDER"tmp/post/0u_"$1
     SUP_FILE=$OUT_FOLDER"tmp/post/sup_"$1
     EVENT_FILE=$OUT_FOLDER"tmp/post/1_"$1
@@ -97,19 +98,52 @@ function filter_flanks_coverage() {
 
     awk '{ EV=$4/($3-$2+1); A=$8/1000; B=$12/1000; FL_A=EV/A; FL_B=EV/B; 
         printf("%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t", $1, $2, $3, $13, $14, $15, EV, A, B);
-        if (FL_A >= 1.0 && FL_B >= 1.0) printf("0\n"); else printf("1\n"); 
-        }' $COV_FINAL >$FILTER_COV_EVENTS
+        if (FL_A >= 0.9 || FL_B >= 0.9) 
+        {
+            printf("0\n");
+        } 
+        else 
+        {
+            printf("1\n");
+        }
+    }' $COV_FINAL >$FILTER_COV_EVENTS
 
-    cat $FILTER_COV_EVENTS | awk -v IMP_FLAG="$2" '{ id+=1;
-        printf("%s\t%d\t%d\t%s\t%s\t%s\t", $1, $2, id, "N", "<DEL>", "."); 
-        if ($10 == 1) printf("PASS\t"); else printf(".\t"); 
+    awk -v IMP_FLAG="$IMP_FLAG" '{ id+=1;
+        printf("%s\t%d\t%d\t%s\t%s\t%s\t", $1, $2, id, "N", "<DEL>", ".");
+        if ($10 == 1)
+        {
+            printf("PASS\t");
+        }
+        else
+        {
+            printf(".\t");
+        }
         printf("SVTYPE=DEL;SVLEN=%d;END=%d;SU=%d;PE=%d;SR=%d;SC=%d;COV=%.3f;COV_A=%.3f;COV_B=%.3f;", $3-$2+1, $3, $4+$5+$6, $4, $5, $6, $7, $8, $9);
-        if ($IMP_FLAG == 1) printf("IMPRECISE;");
-        printf("\tSU:PE:SR:SC\t%d:%d:%d:%d\n", $4+$5+$6, $4, $5, $6);
-        }' >>$OUT_FILE
+        GT="./.";
+        if (IMP_FLAG == 1)
+        {
+            printf("IMPRECISE;");
+        }
+        else
+        {
+            if ($7 <= 0.2*$8 || $7 <= 0.2*$9)
+            {
+                GT="1/1";
+            }
+            else if ($7 <= 0.9*$8 && $7 <= 0.9*$9)
+            {
+                GT="0/1";
+            }
+            else
+            {
+                GT="./.";
+            }
+        }
+        printf("\tGT:SU:PE:SR:SC\t%s:%d:%d:%d:%d\n", GT, $4+$5+$6, $4, $5, $6);
+    }' $FILTER_COV_EVENTS >>$OUT_FILE
 }
 
-echo "[Step5] Postprocess start"
+echo "[Step3] Postprocess start"
 
 parse_arguments $@
 
@@ -150,4 +184,4 @@ cat $OUT_FOLDER"tmp/pre/header.vcf" >$FINAL_FILE
 echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample" >>$FINAL_FILE
 cat $OUT_SORT_FILE >>$FINAL_FILE
 
-echo "[Step5] Postprocess end"
+echo "[Step3] Postprocess end"

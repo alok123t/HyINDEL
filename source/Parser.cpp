@@ -56,7 +56,7 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
     args::ValueFlag<std::string> outFolderName(groupOutputFolder, "outFolder", "Output Folder", {'o', "out"});
 
     args::Group groupThreads(parser, "Threads", args::Group::Validators::AllOrNone);
-    args::ValueFlag<int> threads(groupThreads, "threads", "Threads", {'t', "threads"});
+    args::ValueFlag<unsigned int> threads(groupThreads, "threads", "Threads", {'t', "threads"});
 
     args::Group groupVerboseFlag(parser, "Verbose", args::Group::Validators::AllOrNone);
     args::ValueFlag<int> verbose(groupVerboseFlag, "verbose", "Verbose", {'v', "verbose"});
@@ -98,9 +98,10 @@ bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
         checkFolder(args::get(outFolderName), ap.outFolderPath);
     }
 
+    ap.threads = std::thread::hardware_concurrency();
     if (threads)
     {
-        ap.threads = std::max(1, std::min(args::get(threads), (int)(std::thread::hardware_concurrency())));
+        ap.threads = std::max((unsigned int)1, std::min(args::get(threads), ap.threads));
     }
 
     if (verbose)

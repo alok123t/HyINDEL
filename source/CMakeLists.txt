@@ -17,16 +17,16 @@ include_directories( "${CMAKE_SOURCE_DIR}/external/args" )
 include_directories( "${CMAKE_SOURCE_DIR}/external/bamtools/src" )
 include_directories( "${CMAKE_SOURCE_DIR}/external/transwarp/src" )
 
-add_executable( indel ${SOURCES} )
-target_link_libraries( indel Threads::Threads )
-target_link_libraries( indel BamTools )
+add_executable( pm-dels ${SOURCES} )
+target_link_libraries( pm-dels Threads::Threads )
+target_link_libraries( pm-dels BamTools )
 
-add_executable( ins ${SOURCES_INS} )
+add_executable( pm-ins ${SOURCES_INS} )
 
-install( TARGETS indel
+install( TARGETS pm-dels
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
     )
 
-install( TARGETS ins
+install( TARGETS pm-ins
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
     )
