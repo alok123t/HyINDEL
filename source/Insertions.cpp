@@ -9,18 +9,29 @@
 // args api
 #include "args.hxx"
 
+// task concurrency api
+#include "transwarp.h"
+
 const int matchScore = 1;
 const int misMatchScore = -1;
 const int gapPenalty = -1;
-const double alnThreshold = 0.9;
+const double alnThreshold = 0.85;
 
-bool parse(int argc, char const *argv[], std::string &outFolderPath)
+int MIN_ORPHAN_SIZE;
+
+// values: true, pre, mid, suf (is total length >= 1500)
+// values: false, seq, "", "" (else)
+std::vector<std::tuple<bool, std::string, std::string, std::string>> orphans;
+
+bool parse(int argc, char const *argv[], int &readLen, std::string &outFolderPath, unsigned int &threads)
 {
     args::ArgumentParser parser("This program identifies insertions in NGS data");
     args::HelpFlag help(parser, "help", "Help menu", {'h', "help"});
 
     args::Group groupOutputFolder(parser, "Output Folder", args::Group::Validators::All);
+    args::ValueFlag<int> readLenVal(groupOutputFolder, "readLen", "Read length", {'l', "readLen"});
     args::ValueFlag<std::string> outFolderName(groupOutputFolder, "outFolder", "Output Folder", {'o', "out"});
+    args::ValueFlag<unsigned int> threadsVal(groupOutputFolder, "threads", "Threads", {'t', "threads"});
 
     try
     {
@@ -44,7 +55,9 @@ bool parse(int argc, char const *argv[], std::string &outFolderPath)
         return false;
     }
 
+    readLen = args::get(readLenVal);
     outFolderPath = args::get(outFolderName);
+    threads = args::get(threadsVal);
     if (outFolderPath.back() != '/')
     {
         outFolderPath += "/";
@@ -98,6 +111,7 @@ void revComp(const std::string &inp, std::string &out)
     }
 }
 
+// return args: found, start, end (positions wrt to large)
 std::tuple<bool, int, int> checkAlign(const std::string &large, const std::string &small)
 {
     int rows = large.size() + 1;
@@ -129,160 +143,488 @@ std::tuple<bool, int, int> checkAlign(const std::string &large, const std::strin
     return std::make_tuple(false, -1, -1);
 }
 
-std::tuple<int, std::string> align(const std::string &contigSeq, const std::string &scSeqUp, const std::string &scSeqDown)
+int median(std::vector<int> v)
 {
-    std::string revCompContigSeq;
-    revComp(contigSeq, revCompContigSeq);
-
-    std::tuple<bool, int, int> pUp1 = checkAlign(contigSeq, scSeqUp);
-    std::tuple<bool, int, int> pUp2 = checkAlign(revCompContigSeq, scSeqUp);
-    std::tuple<bool, int, int> pDown1 = checkAlign(contigSeq, scSeqDown);
-    std::tuple<bool, int, int> pDown2 = checkAlign(revCompContigSeq, scSeqDown);
-
-    // found up and down sc on one contig
-    if (std::get<0>(pUp1) && std::get<0>(pDown1))
-    {
-        int st = std::get<1>(pUp1);
-        int en = std::get<2>(pDown1);
-        if (st >= contigSeq.size())
-            return std::make_tuple(-1, std::string());
-        std::string insSeq = contigSeq.substr(st, en - st);
-        return std::make_tuple(0, insSeq);
-    }
-    else if (std::get<0>(pUp2) && std::get<0>(pDown2))
-    {
-        int st = std::get<1>(pUp2);
-        int en = std::get<2>(pDown2);
-        if (st >= revCompContigSeq.size())
-            return std::make_tuple(-1, std::string());
-        std::string insSeq = revCompContigSeq.substr(st, en - st);
-        return std::make_tuple(0, insSeq);
-    }
-    // found up or down sc on one contig
-    else if (std::get<0>(pUp1))
-    {
-        int st = std::get<1>(pUp1);
-        if (st >= contigSeq.size())
-            return std::make_tuple(-1, std::string());
-        std::string insSeq = contigSeq.substr(st);
-        return std::make_tuple(1, insSeq);
-    }
-    else if (std::get<0>(pUp2))
-    {
-        int st = std::get<1>(pUp2);
-        if (st >= revCompContigSeq.size())
-            return std::make_tuple(-1, std::string());
-        std::string insSeq = revCompContigSeq.substr(st);
-        return std::make_tuple(1, insSeq);
-    }
-    else if (std::get<0>(pDown1))
-    {
-        int en = std::get<2>(pDown1);
-        std::string insSeq = contigSeq.substr(0, en);
-        return std::make_tuple(2, insSeq);
-    }
-    else if (std::get<0>(pDown2))
-    {
-        int en = std::get<2>(pDown2);
-        std::string insSeq = revCompContigSeq.substr(0, en);
-        return std::make_tuple(2, insSeq);
-    }
-    return std::make_tuple(-1, std::string());
+    size_t n = v.size() / 2;
+    nth_element(v.begin(), v.begin() + n, v.end());
+    return v[n];
 }
 
-void readFile(std::ofstream &ofs, std::string &outFolderPath, std::string fName)
+// return args: found, median end position, orientation
+std::tuple<bool, int, bool> alignSeqToContig(const std::vector<std::string> &seq, const std::string &contig)
 {
+    bool ok = true;
+    std::vector<int> endPos;
+    for (int i = 0; i < seq.size(); ++i)
+    {
+        std::tuple<bool, int, int> a = checkAlign(contig, seq.at(i));
+        if (!std::get<0>(a))
+        {
+            ok = false;
+            break;
+        }
+        endPos.emplace_back(std::get<2>(a));
+    }
+    if (ok)
+        return std::make_tuple(true, median(endPos), true);
+
+    ok = true;
+    endPos.clear();
+    for (int i = 0; i < seq.size(); ++i)
+    {
+        std::string revContig;
+        revComp(contig, revContig);
+        std::tuple<bool, int, int> a = checkAlign(revContig, seq.at(i));
+        if (!std::get<0>(a))
+        {
+            ok = false;
+            break;
+        }
+        endPos.emplace_back(std::get<2>(a));
+    }
+    if (ok)
+        return std::make_tuple(true, median(endPos), false);
+    return std::make_tuple(false, -1, false);
+}
+
+// return args: found, position
+std::tuple<bool, int> alignContigToOrphan(const std::string &contig, const int orphanIdx, bool type)
+{
+    std::tuple<bool, std::string, std::string, std::string> curOrphan = orphans.at(orphanIdx);
+
+    std::string wContig, wOrphan;
+    // is upstream contig (find end pos by reversing)
+    if (type)
+    {
+        wContig = contig;
+        reverse(wContig.begin(), wContig.end());
+    }
+    // is downstream contig
+    else
+    {
+        wContig = contig;
+    }
+
+    // large orphan
+    if (std::get<0>(curOrphan))
+    {
+        if (type)
+        {
+            wOrphan = std::get<1>(curOrphan);
+            reverse(wOrphan.begin(), wOrphan.end());
+        }
+        else
+        {
+            wOrphan = std::get<3>(curOrphan);
+        }
+    }
+    // small orphan
+    else
+    {
+        if (type)
+        {
+            wOrphan = std::get<1>(curOrphan);
+            reverse(wOrphan.begin(), wOrphan.end());
+        }
+        else
+        {
+            wOrphan = std::get<1>(curOrphan);
+        }
+    }
+
+    std::tuple<bool, int, int> a = checkAlign(wOrphan, wContig);
+    if (std::get<0>(a))
+    {
+        return std::make_tuple(true, std::get<2>(a));
+    }
+    return std::make_tuple(false, -1);
+}
+
+void longInsertion(const std::string &upContig, const std::string &downContig, std::tuple<bool, std::string, std::string> &output)
+{
+    int orphanUpId = -1, orphanDownId = -1, orphanUpPos, reversedOrphanUpPos, orphanDownPos;
+    // align upContig to Orphan contig
+    for (int i = 0; i < orphans.size(); ++i)
+    {
+        std::tuple<bool, int> pUp = alignContigToOrphan(upContig, i, true);
+        if (std::get<0>(pUp))
+        {
+            orphanUpId = i;
+            orphanUpPos = std::get<1>(pUp);
+            break;
+        }
+    }
+    // align downContig to Orphan contig
+    for (int i = 0; i < orphans.size(); ++i)
+    {
+        std::tuple<bool, int> pDown = alignContigToOrphan(downContig, i, false);
+        if (std::get<0>(pDown))
+        {
+            orphanDownId = i;
+            orphanDownPos = std::get<1>(pDown);
+            break;
+        }
+    }
+    // mapped both upContig and downContig onto same orphan
+    if (orphanUpId == orphanDownId && orphanUpId != -1)
+    {
+        std::tuple<bool, std::string, std::string, std::string> curOrphan = orphans.at(orphanUpId);
+        // large orphan
+        if (std::get<0>(curOrphan))
+        {
+            reversedOrphanUpPos = 500 - orphanUpPos;
+            std::string ret = std::get<1>(curOrphan).substr(reversedOrphanUpPos) +
+                              std::get<2>(curOrphan) +
+                              std::get<3>(curOrphan).substr(0, orphanDownPos);
+            output = std::make_tuple(true, ret, std::string());
+        }
+        // small orphan
+        else
+        {
+            reversedOrphanUpPos = std::get<1>(curOrphan).size() - orphanUpPos;
+            int tillLen = orphanDownPos - reversedOrphanUpPos;
+            std::string ret = std::get<1>(curOrphan).substr(reversedOrphanUpPos, tillLen);
+            output = std::make_tuple(true, ret, std::string());
+        }
+        return;
+    }
+
+    std::string retPre, retSuf;
+    if (orphanUpId != -1)
+    {
+        std::tuple<bool, std::string, std::string, std::string> curOrphan = orphans.at(orphanUpId);
+        // large orphan
+        if (std::get<0>(curOrphan))
+        {
+            reversedOrphanUpPos = 500 - orphanUpPos;
+            retPre = std::get<1>(curOrphan).substr(reversedOrphanUpPos) +
+                     std::get<2>(curOrphan) +
+                     std::get<3>(curOrphan);
+        }
+        // small orphan
+        else
+        {
+            reversedOrphanUpPos = std::get<1>(curOrphan).size() - orphanUpPos;
+            retPre = std::get<1>(curOrphan).substr(reversedOrphanUpPos);
+        }
+    }
+    if (orphanDownId != -1)
+    {
+        std::tuple<bool, std::string, std::string, std::string> curOrphan = orphans.at(orphanDownId);
+        // large orphan
+        if (std::get<0>(curOrphan))
+        {
+            retSuf = std::get<1>(curOrphan) +
+                     std::get<2>(curOrphan) +
+                     std::get<3>(curOrphan).substr(0, orphanDownPos);
+        }
+        // small orphan
+        else
+        {
+            retSuf = std::get<1>(curOrphan).substr(orphanDownPos);
+        }
+    }
+    output = std::make_tuple(false, retPre, retSuf);
+}
+
+void smallInsertion(const std::vector<std::string> &upSeq, const std::vector<std::string> &downSeq, const std::vector<std::string> &contigs, const std::string &refName, const int pos, const int upSup, const int downSup, const std::string &outFolderPath)
+{
+    int upId = -1, downId = -1, upPos, downPos;
+    bool upTy = false, downTy = false;
+    // align downSeq to Contig
+    for (int i = 0; i < contigs.size(); ++i)
+    {
+        std::tuple<bool, int, bool> pDown = alignSeqToContig(downSeq, contigs.at(i));
+        if (std::get<0>(pDown))
+        {
+            downId = i;
+            downPos = std::get<1>(pDown);
+            downTy = std::get<2>(pDown);
+        }
+    }
+    // align upSeq (reversed) to Contig (reversed)
+    std::vector<std::string> reversedUpSeq;
+    for (int i = 0; i < upSeq.size(); ++i)
+    {
+        std::string tmp = upSeq.at(i);
+        reverse(tmp.begin(), tmp.end());
+        reversedUpSeq.emplace_back(tmp);
+    }
+    for (int i = 0; i < contigs.size(); ++i)
+    {
+        std::string reversedContig = contigs.at(i);
+        reverse(reversedContig.begin(), reversedContig.end());
+        std::tuple<bool, int, bool> pUp = alignSeqToContig(reversedUpSeq, reversedContig);
+        if (std::get<0>(pUp))
+        {
+            upId = i;
+            upPos = std::get<1>(pUp);
+            upTy = std::get<2>(pUp);
+        }
+    }
+
+    if (upId == downId && upId != -1)
+    {
+        std::ofstream ofs;
+        std::string outFile = outFolderPath + "output.vcf";
+        ofs.open(outFile, std::ofstream::out | std::ofstream::app);
+        int reversedUpPos = contigs.at(upId).size() - upPos;
+        int tillLen = downPos - reversedUpPos;
+        if (upTy && downTy)
+        {
+            std::string out = contigs.at(upId).substr(reversedUpPos, tillLen);
+            if (out.size() < 50)
+            {
+                ofs.close();
+                return;
+            }
+            // ofs << "Small\t" << refName << '\t' << pos << '\t' << upSup << '\t' << downSup << '\t' << out << '\n';
+            ofs << refName << '\t' << pos << '\t' << "0" << '\t' << "N" << '\t' << "<INS>" << '\t' << "." << '\t' << "PASS" << '\t'
+                << "SVTYPE=INS;SVLEN=" << out.size() << ";SC=" << upSup + downSup << ";SEQ=" << out << ";" << '\t'
+                << "GT:SU:SC" << '\t' << "./.:" << upSup + downSup << ":" << upSup + downSup << '\n';
+        }
+        else if (!upTy && !downTy)
+        {
+            std::string revContig;
+            revComp(contigs.at(upId), revContig);
+            std::string out = revContig.substr(reversedUpPos, tillLen);
+            if (out.size() < 50)
+            {
+                ofs.close();
+                return;
+            }
+            // ofs << "Small\t" << refName << '\t' << pos << '\t' << upSup << '\t' << downSup << '\t' << out << '\n';
+            ofs << refName << '\t' << pos << '\t' << "0" << '\t' << "N" << '\t' << "<INS>" << '\t' << "." << '\t' << "PASS" << '\t'
+                << "SVTYPE=INS;SVLEN=" << out.size() << ";SC=" << upSup + downSup << ";SEQ=" << out << ";" << '\t'
+                << "GT:SU:SC" << '\t' << "./.:" << upSup + downSup << ":" << upSup + downSup << '\n';
+        }
+        ofs.close();
+    }
+    else
+    {
+        std::string downContig, upContig;
+        if (downId != -1)
+        {
+            if (downTy)
+            {
+                downContig = contigs.at(downId).substr(0, downPos);
+            }
+            else
+            {
+                std::string revContig;
+                revComp(contigs.at(downId), revContig);
+                downContig = revContig.substr(0, downPos);
+            }
+        }
+        if (upId != -1)
+        {
+            int reversedPos = contigs.at(upId).size() - upPos;
+            if (upTy)
+            {
+                upContig = contigs.at(upId).substr(reversedPos);
+            }
+            else
+            {
+                std::string revContig;
+                revComp(contigs.at(upId), revContig);
+                upContig = revContig.substr(reversedPos);
+            }
+        }
+        if (upContig.size() > 0 && downContig.size() > 0)
+        {
+            std::tuple<bool, std::string, std::string> largeOutput;
+            longInsertion(upContig, downContig, largeOutput);
+            std::ofstream ofs;
+            std::string outFile = outFolderPath + "output.vcf";
+            ofs.open(outFile, std::ofstream::out | std::ofstream::app);
+            if (std::get<0>(largeOutput))
+            {
+                // ofs << "Large\t" << refName << '\t' << pos << '\t' << upSup << '\t' << downSup << '\t' << std::get<1>(largeOutput) << '\n'
+                //     << std::flush;
+                std::string outSeq = std::get<1>(largeOutput);
+                ofs << refName << '\t' << pos << '\t' << "0" << '\t' << "N" << '\t' << "<INS>" << '\t' << "." << '\t' << "PASS" << '\t'
+                    << "SVTYPE=INS;SVLEN=" << outSeq.size() << ";SC=" << upSup + downSup << ";SEQ=" << outSeq << ";" << '\t'
+                    << "GT:SU:SC" << '\t' << "./.:" << upSup + downSup << ":" << upSup + downSup << '\n'
+                    << std::flush;
+            }
+            else
+            {
+                // imprecise output
+                // replace with larger orphanUpContig, if found
+                if (std::get<1>(largeOutput).size() > upContig.size())
+                    upContig = std::get<1>(largeOutput);
+                // replace with larger orphanDownContig, if found
+                if (std::get<2>(largeOutput).size() > downContig.size())
+                    downContig = std::get<2>(largeOutput);
+                // ofs << "Imprecise\t" << refName << '\t' << pos << '\t' << upSup << '\t' << downSup << '\t' << upContig << '\t' << downContig << '\n'
+                //     << std::flush;
+                if (upContig.size() < 50 || downContig.size() < 50)
+                {
+                    ofs.close();
+                    return;
+                }
+                ofs << refName << '\t' << pos << '\t' << "0" << '\t' << "N" << '\t' << "<INS>" << '\t' << "." << '\t' << "PASS" << '\t'
+                    << "SVTYPE=INS;SC=" << upSup + downSup << ";SEQUP=" << upContig << ";SEQDOWN=" << downContig << ";IMPRECISE" << '\t'
+                    << "GT:SU:SC" << '\t' << "./.:" << upSup + downSup << ":" << upSup + downSup << '\n'
+                    << std::flush;
+            }
+            ofs.close();
+        }
+    }
+}
+
+void readOrphans(const std::string &fOrphansName)
+{
+    std::ifstream ifs;
+    std::string head;
+
+    ifs.open(fOrphansName, std::ifstream::in);
+    while (std::getline(ifs, head))
+    {
+        std::string seq;
+        std::getline(ifs, seq);
+        if (seq.size() >= 1500)
+        {
+            std::string pre = seq.substr(0, 500);
+            std::string mid = seq.substr(500, (int)seq.size() - 1000);
+            std::string suf = seq.substr((int)seq.size() - 500);
+            orphans.emplace_back(std::make_tuple(true, pre, mid, suf));
+
+            std::string preRC, midRC, sufRC;
+            revComp(pre, preRC);
+            revComp(mid, midRC);
+            revComp(suf, sufRC);
+            orphans.emplace_back(std::make_tuple(true, sufRC, midRC, preRC));
+        }
+        else
+        {
+            if (seq.size() < MIN_ORPHAN_SIZE)
+            {
+                continue;
+            }
+            orphans.emplace_back(std::make_tuple(false, seq, std::string(), std::string()));
+
+            std::string seqRC;
+            revComp(seq, seqRC);
+            orphans.emplace_back(std::make_tuple(false, seqRC, std::string(), std::string()));
+        }
+    }
+    ifs.close();
+}
+void readFiles(const std::string &fName, const std::string &outFolderPath)
+{
+
     std::size_t foundIdx = fName.find_last_of(".");
     std::string fPrefixName = fName.substr(0, foundIdx);
     std::string fContigsName = outFolderPath + "tmp/ins/" + fPrefixName + ".contigs.fa";
     std::string fSeqName = outFolderPath + "tmp/ins/" + fPrefixName + ".seq";
 
-    std::ifstream ifs;
-    ifs.open(fSeqName, std::ifstream::in);
-    std::string scSeqUp, scSeqDown, refName;
-    int pos, sup1, sup2;
-    ifs >> scSeqUp >> scSeqDown >> refName >> pos >> sup1 >> sup2;
-    for (int i = 0; i < scSeqUp.size(); i++)
-        scSeqUp.at(i) = toupper(scSeqUp.at(i));
-    for (int i = 0; i < scSeqDown.size(); i++)
-        scSeqDown.at(i) = toupper(scSeqDown.at(i));
-    ifs.close();
+    std::ifstream ifsSeq;
+    int upCo, downCo, pos, upSup, downSup;
+    std::vector<std::string> upSeq, downSeq;
+    std::string refName;
+    int minSeqLen = 1000000;
 
-    ifs.open(fContigsName, std::ifstream::in);
-    std::string contigHead, contigSeq;
-    std::string insSeq, insUpSeq, insDownSeq;
-    int found = -1;
-    while (std::getline(ifs, contigHead))
+    ifsSeq.open(fSeqName, std::ifstream::in);
+    ifsSeq >> upCo;
+    for (int i = 0; i < upCo; ++i)
     {
-        std::getline(ifs, contigSeq);
-        std::tuple<int, std::string> ret = align(contigSeq, scSeqUp, scSeqDown);
-        int ty = std::get<0>(ret);
-        std::string hereSeq = std::get<1>(ret);
-        if (ty == 0)
-        {
-            found = 0;
-            insSeq = hereSeq;
-            break;
-        }
-        // imprecise
-        else if (ty == 1)
-        {
-            found = 1;
-            insUpSeq = hereSeq;
-        }
-        else if (ty == 2)
-        {
-            found = 1;
-            insDownSeq = hereSeq;
-        }
+        std::string seq;
+        ifsSeq >> seq;
+        upSeq.emplace_back(seq);
+        minSeqLen = std::min(minSeqLen, (int)seq.size());
     }
-    ifs.close();
+    ifsSeq >> downCo;
+    for (int i = 0; i < downCo; ++i)
+    {
+        std::string seq;
+        ifsSeq >> seq;
+        downSeq.emplace_back(seq);
+        minSeqLen = std::min(minSeqLen, (int)seq.size());
+    }
+    ifsSeq >> refName >> pos >> upSup >> downSup;
+    ifsSeq.close();
 
-    if (found == 0)
+    if (minSeqLen <= 20)
     {
-        ofs << refName << '\t' << pos << '\t' << sup1 << '\t' << sup2 << '\t' << insSeq << '\n';
+        return;
     }
-    else if (found == 1)
+    std::ifstream ifsContig;
+    std::vector<std::string> contigs;
+    std::string head;
+
+    ifsContig.open(fContigsName, std::ifstream::in);
+    while (std::getline(ifsContig, head))
     {
-        ofs << refName << '\t' << pos << '\t' << sup1 << '\t' << sup2 << '\t' << insUpSeq << '\t' << insDownSeq << '\n';
+        std::string seq;
+        std::getline(ifsContig, seq);
+        contigs.emplace_back(seq);
     }
+    ifsContig.close();
+
+    smallInsertion(upSeq, downSeq, contigs, refName, pos, upSup, downSup, outFolderPath);
 }
 
-void traverseFiles(std::ofstream &ofs, std::string &outFolderPath)
+void traverseFiles(const std::string &outFolderPath, const unsigned int threads)
 {
     DIR *dir;
     struct dirent *ent;
     std::string tmpInsFolder = outFolderPath + "tmp/ins/";
     dir = opendir(tmpInsFolder.c_str());
+
+    transwarp::parallel executor{threads};
+    std::vector<std::shared_ptr<transwarp::task<void>>> tasks;
+
     if (dir != NULL)
     {
+        std::string fOrphansName = outFolderPath + "tmp/ins/orphans.contigs.fa";
+        std::vector<std::string> orphans;
+        readOrphans(fOrphansName);
+
         while ((ent = readdir(dir)) != NULL)
         {
             std::string fName = ent->d_name;
             if (isValidExtension(fName))
             {
-                readFile(ofs, outFolderPath, fName);
+                std::size_t orphansFound = fName.find("orphans");
+                if (orphansFound != std::string::npos)
+                    continue;
+                // readFiles(fName, outFolderPath, ofs);
+                auto outFolderTask = transwarp::make_value_task(outFolderPath);
+                auto fNameTask = transwarp::make_value_task(fName);
+                auto processTask = transwarp::make_task(transwarp::consume, readFiles, fNameTask, outFolderTask);
+                tasks.emplace_back(processTask);
             }
         }
         closedir(dir);
+    }
+
+    for (auto task : tasks)
+    {
+        task->schedule(executor);
+    }
+
+    for (auto task : tasks)
+    {
+        task->get();
     }
 }
 
 int main(int argc, char const *argv[])
 {
+    int readLen;
+    unsigned int threads;
     std::string outFolderPath;
-    if (!parse(argc, argv, outFolderPath))
+    if (!parse(argc, argv, readLen, outFolderPath, threads))
         return EXIT_FAILURE;
     std::cerr << "[Step5] Align Insertions start\n";
-    std::cerr << "Output folder: " << outFolderPath << '\n';
+    std::cerr << "        Read length: " << readLen << '\n';
+    std::cerr << "        Output folder: " << outFolderPath << '\n';
+    std::cerr << "        Threads: " << threads << '\n';
 
-    std::ofstream ofs;
-    std::string outFile = outFolderPath + "insertions.bed";
-    ofs.open(outFile, std::ofstream::out);
+    MIN_ORPHAN_SIZE = 2 * readLen;
 
-    traverseFiles(ofs, outFolderPath);
-
-    ofs.close();
+    traverseFiles(outFolderPath, threads);
 
     std::cerr << "[Step5] Align Insertions end\n";
 

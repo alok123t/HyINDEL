@@ -1,17 +1,18 @@
 #!/bin/bash
 
 THREADS=1
+SKIP_PRE=0
 
 function print_usage() {
-    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-s insert size] [-d standard deviation] [-l read length] [-c coverage] [-t threads]"
-    echo "  -h, --help  Help"
-    echo "  -i, --inp  Path to input file"
-    echo "  -o, --out  Path to output folder"
-    echo "  -s, --insSz  Median Insert size"
-    echo "  -d, --stdDev  Median Standard deviation"
-    echo "  -l, --readLen  Read length"
-    echo "  -c, --cov  Coverage"
-    echo "  -t, --threads  Threads"
+    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-s insert size] [-d standard deviation] [-l read length] [-c coverage] [-t threads]" >&2
+    echo "  -h, --help  Help" >&2
+    echo "  -i, --inp  Path to input file" >&2
+    echo "  -o, --out  Path to output folder" >&2
+    echo "  -s, --insSz  Median Insert size" >&2
+    echo "  -d, --stdDev  Median Standard deviation" >&2
+    echo "  -l, --readLen  Read length" >&2
+    echo "  -c, --cov  Coverage" >&2
+    echo "  -t, --threads  Threads" >&2
 }
 
 function parse_arguments() {
@@ -58,6 +59,10 @@ function parse_arguments() {
                 shift
                 THREADS=$1
                 ;;
+            --skip)
+                shift
+                SKIP_PRE=$1
+                ;;
             esac
             shift
         done
@@ -67,76 +72,76 @@ function parse_arguments() {
 function print_arguments() {
     INVALID_ARG=0
     if [[ -z $INP_FILE ]]; then
-        echo "ERROR: -i missing"
+        echo "ERROR: -i missing" >&2
         INVALID_ARG=1
     else
         if [[ -e $INP_FILE ]]; then
-            echo "Input file:" $INP_FILE
+            echo "        Input file:" $INP_FILE >&2
         else
-            echo $INP_FILE "does not exist"
+            echo "ERROR: " $INP_FILE "does not exist" >&2
             exit
         fi
     fi
     if [[ -z $OUT_FOLDER ]]; then
-        echo "ERROR: -o missing"
+        echo "ERROR: -o missing" >&2
         INVALID_ARG=1
     else
         if [[ -d $OUT_FOLDER ]]; then
-            echo "Output folder:" $OUT_FOLDER
+            echo "        Output folder:" $OUT_FOLDER >&2
         else
             # Create folder if it doesn't exist
             mkdir -p $OUT_FOLDER
-            echo $OUT_FOLDER "created"
+            echo "        Output folder:" $OUT_FOLDER "created" >&2
         fi
     fi
     if [[ -z $INS_SZ ]]; then
-        echo "ERROR: -s missing"
+        echo "ERROR: -s missing" >&2
         INVALID_ARG=1
     else
         if [[ $INS_SZ -gt 0 ]]; then
-            echo "Insert size:" $INS_SZ
+            echo "        Insert size:" $INS_SZ >&2
         else
-            echo "Insert size" $INS_SZ "is invalid"
+            echo "ERROR: Insert size" $INS_SZ "is invalid" >&2
             exit
         fi
     fi
     if [[ -z $STD_DEV ]]; then
-        echo "ERROR: -d missing"
+        echo "ERROR: -d missing" >&2
         INVALID_ARG=1
     else
         if [[ $STD_DEV -gt 0 ]]; then
-            echo "Standard deviation:" $STD_DEV
+            echo "        Standard deviation:" $STD_DEV >&2
         else
-            echo "Standard deviation" $STD_DEV "is invalid"
+            echo "ERROR: Standard deviation" $STD_DEV "is invalid" >&2
             exit
         fi
     fi
     if [[ -z $INS_SZ ]]; then
-        echo "ERROR: -l missing"
+        echo "ERROR: -l missing" >&2
         INVALID_ARG=1
     else
         if [[ $READ_LEN -gt 0 ]]; then
-            echo "Read length:" $READ_LEN
+            echo "        Read length:" $READ_LEN >&2
         else
-            echo "Read length" $READ_LEN "is invalid"
+            echo "ERROR: Read length" $READ_LEN "is invalid" >&2
             exit
         fi
     fi
     if [[ -z $COVERAGE ]]; then
-        echo "ERROR: -c missing"
+        echo "ERROR: -c missing" >&2
         INVALID_ARG=1
     else
         if [[ $COVERAGE -gt 0 ]]; then
-            echo "Coverage:" $COVERAGE
+            echo "        Coverage:" $COVERAGE >&2
         else
-            echo "Coverage" $COVERAGE "is invalid"
+            echo "ERROR: Coverage" $COVERAGE "is invalid" >&2
             exit
         fi
     fi
     if [[ $THREADS -gt 0 ]]; then
-        echo "Threads:" $THREADS
+        echo "        Threads:" $THREADS >&2
     else
-        echo "Threads" $THREADS "is invalid"
+        echo "ERROR: Threads" $THREADS "is invalid" >&2
         exit
     fi
 
@@ -150,12 +155,12 @@ parse_arguments $@
 
 print_arguments
 
-$(dirname $0)/pm-preProcess -i $INP_FILE -o $OUT_FOLDER
+# $(dirname $0)/HyINDEL_pre -i $INP_FILE -o $OUT_FOLDER --skip $SKIP_PRE
 
-$(dirname $0)/pm-dels -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN -c $COVERAGE -t $THREADS
+# $(dirname $0)/HyINDEL_dels -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN -c $COVERAGE -t $THREADS
 
-$(dirname $0)/pm-postProcess -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE
+# $(dirname $0)/HyINDEL_post -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE
 
-# $(dirname $0)/pm-assembleInsertions -o $OUT_FOLDER
+# $(dirname $0)/HyINDEL_assembly -i $INP_FILE -o $OUT_FOLDER
 
-# $(dirname $0)/pm-ins -o $OUT_FOLDER
+$(dirname $0)/HyINDEL_ins -o $OUT_FOLDER -l $READ_LEN -t $THREADS

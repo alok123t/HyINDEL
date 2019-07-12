@@ -132,13 +132,16 @@ void clusterSC(const std::vector<SoftNode> &nodes, std::vector<SoftCluster> &clu
 		if (!found)
 		{
 			SoftCluster sc(n);
-			clusters.emplace_back(n);
+			clusters.emplace_back(sc);
 		}
 	}
 }
 
 void addDisc(BamTools::BamAlignment &aln, const int &bpRegion, std::vector<DiscNode> &nodes)
 {
+	// both reads should be mapped
+	if (!aln.IsMapped() || !aln.IsMateMapped())
+		return;
 	if (aln.IsProperPair())
 		return;
 
@@ -182,6 +185,7 @@ void addDisc(BamTools::BamAlignment &aln, const int &bpRegion, std::vector<DiscN
 void addHC(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vector<SoftNode> &nodesUp, std::vector<SoftNode> &nodesDown)
 {
 	bool isSC = false;
+	bool bothMapped = aln.IsMapped() & aln.IsMateMapped();
 	if (aln.CigarData.back().Type == 'H')
 	{
 		int start = aln.Position, end = aln.GetEndPosition();
@@ -232,10 +236,9 @@ void addSC(BamTools::BamAlignment &aln, const BamTools::RefVector &ref, std::vec
 	}
 
 	int scPos = genomePositions[scIdx];
-
 	std::string seq = aln.QueryBases;
-
 	std::string refName = ref.at(aln.RefID).RefName;
+	bool bothMapped = aln.IsMapped() & aln.IsMateMapped();
 	SoftNode sn(scPos, -1, -1, aln.RefID, refName, seq, aln.Name, scAtRight, isSC);
 
 	if (sn.scAtRight)
@@ -472,6 +475,14 @@ void writeReads(BamTools::BamReader &br, const BamTools::RefVector &ref, int ref
 	BamTools::BamAlignment aln;
 	while (br.GetNextAlignment(aln))
 	{
+		// OEA unmapped reads have mapping qual 0
+		// current aln is unmapped, but it's mate lies in region, hence we can even parse cur aln
+		if (!aln.IsMapped())
+		{
+			outputFastq(aln, ofs);
+			continue;
+		}
+
 		if (aln.MapQuality < MIN_MAP_QUAL)
 			continue;
 
@@ -481,12 +492,6 @@ void writeReads(BamTools::BamReader &br, const BamTools::RefVector &ref, int ref
 		{
 			outputFastq(aln, ofs);
 			addSC(aln, ref, insNodesUp, insNodesDown);
-			continue;
-		}
-
-		if (!aln.IsMapped())
-		{
-			outputFastq(aln, ofs);
 		}
 	}
 	ofs.close();
@@ -524,7 +529,7 @@ void writeReads(BamTools::BamReader &br, const BamTools::RefVector &ref, int ref
 	if (bestSup != 0)
 	{
 		std::string insUpSeq, insDownSeq;
-		// Select node with longest softclip, for up which has max start, for down which has min end
+		std::vector<std::string> up, down;
 		for (SoftNode sn : insClustersUp.at(bestUpIdx).nodes)
 		{
 			int matchLen = sn.scPos - sn.start;
@@ -532,31 +537,59 @@ void writeReads(BamTools::BamReader &br, const BamTools::RefVector &ref, int ref
 			if (matchLen >= sn.seq.size())
 				continue;
 			std::string here = sn.seq.substr(matchLen);
-			if (here.size() > insUpSeq.size())
-				insUpSeq = here;
+			up.emplace_back(here);
 		}
 		for (SoftNode sn : insClustersDown.at(bestDownIdx).nodes)
 		{
 			int scLen = sn.seq.size() - (sn.end - sn.scPos);
 			// from start till scPos
 			std::string here = sn.seq.substr(0, scLen);
-			if (here.size() > insDownSeq.size())
-				insDownSeq = here;
+			down.emplace_back(here);
 		}
-		std::ofstream ofs;
+
+		std::sort(up.begin(), up.end(), cmpLen);
+		std::sort(down.begin(), down.end(), cmpLen);
+
+		up.resize(3);
+		down.resize(3);
+
+		// very small SC sequences, ignore candidate site
+		if (up.back().size() < MIN_INS_SC_SIZE || down.back().size() < MIN_INS_SC_SIZE)
+		{
+			// remove the contigs file generated above
+			remove(outFile.c_str());
+			return;
+		}
+
+		std::ofstream ofsSeq;
 		std::string scSeqFile = folderPath + "tmp/ins/" + refName + "_" + std::to_string(st) + ".seq";
-		ofs.open(scSeqFile, std::ofstream::out);
-		ofs << insUpSeq << '\n'
-			<< insDownSeq << '\n'
-			<< refName << '\n'
-			<< st << '\n'
-			<< insClustersUp.at(bestUpIdx).nodes.size() << '\n'
-			<< insClustersDown.at(bestDownIdx).nodes.size() << '\n';
-		ofs.close();
+		ofsSeq.open(scSeqFile, std::ofstream::out);
+
+		ofsSeq << up.size() << '\n';
+		for (int i = 0; i < up.size(); i++)
+			ofsSeq << up.at(i) << '\n';
+		ofsSeq << down.size() << '\n';
+		for (int i = 0; i < down.size(); i++)
+			ofsSeq << down.at(i) << '\n';
+		ofsSeq << refName << '\n'
+			   << st << '\n'
+			   << insClustersUp.at(bestUpIdx).nodes.size() << '\n'
+			   << insClustersDown.at(bestDownIdx).nodes.size() << '\n';
+		ofsSeq.close();
 
 		OutNode on(ref.at(insClustersUp.at(bestUpIdx).info.refID).RefName, insClustersUp.at(bestUpIdx).info.scPos, insClustersDown.at(bestDownIdx).info.scPos, 0, 0, insClustersUp.at(bestUpIdx).nodes.size() + insClustersDown.at(bestDownIdx).nodes.size());
 		insOutput.emplace_back(on);
 	}
+}
+
+bool checkClosebyIns(const std::vector<OutNode> &insOutput, const std::string chr, const int st, const int en)
+{
+	for (OutNode on : insOutput)
+	{
+		if (on.chr == chr && abs(on.st - st) <= MAX_INS_CLOSE && abs(on.en - en) <= MAX_INS_CLOSE)
+			return true;
+	}
+	return false;
 }
 
 void insertions(BamTools::BamReader &br, const BamTools::RefVector &ref, const int bpRegion, const std::vector<SoftCluster> &scClustersUp, const std::vector<SoftCluster> &scClustersDown, std::vector<OutNode> &insOutput, const std::string &folderPath)
@@ -585,12 +618,14 @@ void insertions(BamTools::BamReader &br, const BamTools::RefVector &ref, const i
 		{
 			int st = scUp.info.scPos;
 			int en = scClustersDown.at(bestIdx).info.scPos;
+			if (checkClosebyIns(insOutput, ref.at(scUp.info.refID).RefName, st, en))
+				continue;
 			writeReads(br, ref, scUp.info.refID, ref.at(scUp.info.refID).RefName, st, en, bpRegion, insOutput, folderPath);
 		}
 	}
 }
 
-void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const int &bpRegion, const bool verbose, const std::map<std::string, std::vector<std::pair<long, long>>> &exRegions, std::vector<DiscCluster> &discClusters, std::vector<SoftCluster> &scClustersUp, std::vector<SoftCluster> &scClustersDown, std::vector<DirectDelCluster> &dDelClusters)
+void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const int &bpRegion, const bool verbose, const std::map<std::string, std::vector<std::pair<long, long>>> &exRegions, std::vector<DiscCluster> &discClusters, std::vector<SoftCluster> &scClustersUp, std::vector<SoftCluster> &scClustersDown, std::vector<DirectDelCluster> &dDelClusters, const std::string &outFolderPath)
 {
 	std::vector<DiscNode> discNodes;
 	std::vector<SoftNode> scNodesUp, scNodesDown;
@@ -602,8 +637,8 @@ void readInput(BamTools::BamReader &br, const BamTools::RefVector &ref, const in
 		// alignment quality check
 		if (aln.MapQuality < MIN_MAP_QUAL)
 			continue;
-		// both reads should be mapped
-		if (!(aln.IsMapped() && aln.IsMateMapped()))
+		// read should be mapped
+		if (!(aln.IsMapped()))
 			continue;
 		// both pairs should be on same chr
 		if (aln.RefID != aln.MateRefID)
@@ -936,7 +971,7 @@ void parallelProcess(const std::tuple<std::string, int, int> &region, const BamT
 	std::vector<SoftCluster> scClustersUp, scClustersDown;
 	std::vector<DirectDelCluster> dDelClusters;
 
-	readInput(br, ref, bpRegion, verbose, exRegions, discClusters, scClustersUp, scClustersDown, dDelClusters);
+	readInput(br, ref, bpRegion, verbose, exRegions, discClusters, scClustersUp, scClustersDown, dDelClusters, outFolderPath);
 
 	std::vector<OutNode> insOutput, smallOutput, largeOutput, impreciseOutput;
 

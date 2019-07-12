@@ -4,7 +4,7 @@
 Edit paths to output generated from Tools in `scripts/results.py`
 
 ```shell
-python results.py
+python3 results.py
 ```
 
 ## Simulations
@@ -17,6 +17,6 @@ Requires around 1TB of space for all simulations
 
 ```shell
 bash simulations/generate.sh
-# or SLURM
+# or using SLURM
 sbatch simulations/generate.sh
 ```

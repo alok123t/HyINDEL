@@ -4,8 +4,8 @@ set( SOURCES
     ${CMAKE_SOURCE_DIR}/source/Parser.hpp
     )
 
+include_directories( "${CMAKE_SOURCE_DIR}/external" )
 include_directories( "${CMAKE_SOURCE_DIR}/source" )
-include_directories( "${CMAKE_SOURCE_DIR}/external/args" )
 
-add_executable( TestParser ${SOURCES} )
-add_test( NAME Parser COMMAND TestParser )
+add_executable( pm-test ${SOURCES} )
+add_test( NAME Parser COMMAND pm-test )

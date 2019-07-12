@@ -1,20 +1,20 @@
-install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/plusminus.sh
+install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/HyINDEL.sh
     DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-    RENAME plusminus
+    RENAME HyINDEL
     )
 
-install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/pm-preProcess.sh
+install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/Pre.sh
     DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-    RENAME pm-preProcess
+    RENAME HyINDEL_pre
     )
 
-install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/pm-postProcess.sh
+install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/Post.sh
     DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-    RENAME pm-postProcess
+    RENAME HyINDEL_post
     )
 
-install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/pm-assembleInsertions.sh
+install( PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/Assembly.sh
     DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-    RENAME pm-assembleInsertions
+    RENAME HyINDEL_assembly
     )
     

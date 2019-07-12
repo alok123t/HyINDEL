@@ -1,11 +1,4 @@
-[submodule "args"]
-	path = external/args
-	url = https://github.com/Taywee/args.git
-    ignore = dirty
 [submodule "bamtools"]
 	path = external/bamtools
 	url = https://github.com/pezmaster31/bamtools.git
     ignore = dirty
-[submodule "transwarp"]
-	path = external/transwarp
-	url = https://github.com/bloomen/transwarp.git

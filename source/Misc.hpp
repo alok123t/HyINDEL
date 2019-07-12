@@ -48,6 +48,8 @@ const int MIN_DDEL_SUPPORT = 5;
 
 const int MIN_INS_DIFF_CLUSTERS = -5;
 const int MAX_INS_DIFF_CLUSTERS = 5;
+const int MAX_INS_CLOSE = 10;
+const int MIN_INS_SC_SIZE = 20;
 
 const std::string COMMA = ",";
 const std::string SEMICOLON = ";";
@@ -144,6 +146,11 @@ inline bool SoftClusterCmp(const SoftCluster &a, const SoftCluster &b)
 inline bool inBetween(const int &a, const int &b, const int &x)
 {
     return a <= x && x <= b;
+}
+
+inline bool cmpLen(const std::string &a, const std::string &b)
+{
+    return a.size() > b.size();
 }
 
 inline void getFileName(const std::string &filePath, std::string &outFilePath)

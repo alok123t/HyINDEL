@@ -13,20 +13,20 @@ set ( SOURCES_INS
     ${CMAKE_SOURCE_DIR}/source/Insertions.cpp
     )
 
-include_directories( "${CMAKE_SOURCE_DIR}/external/args" )
+include_directories( "${CMAKE_SOURCE_DIR}/external/" )
 include_directories( "${CMAKE_SOURCE_DIR}/external/bamtools/src" )
-include_directories( "${CMAKE_SOURCE_DIR}/external/transwarp/src" )
 
-add_executable( pm-dels ${SOURCES} )
-target_link_libraries( pm-dels Threads::Threads )
-target_link_libraries( pm-dels BamTools )
+add_executable( HyINDEL_dels ${SOURCES} )
+target_link_libraries( HyINDEL_dels Threads::Threads )
+target_link_libraries( HyINDEL_dels BamTools )
 
-add_executable( pm-ins ${SOURCES_INS} )
+add_executable( HyINDEL_ins ${SOURCES_INS} )
+target_link_libraries( HyINDEL_ins Threads::Threads )
 
-install( TARGETS pm-dels
+install( TARGETS HyINDEL_dels
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
     )
 
-install( TARGETS pm-ins
+install( TARGETS HyINDEL_ins
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
     )

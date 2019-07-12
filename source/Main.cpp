@@ -17,13 +17,13 @@ int main(int argc, char const *argv[])
 
 	if (ap.verbose)
 	{
-		std::cerr << "Insert size: " << ap.insSz << '\n';
-		std::cerr << "Standard deviation: " << ap.stdDev << '\n';
-		std::cerr << "Read length: " << ap.readLen << '\n';
-		std::cerr << "Coverage: " << ap.cov << '\n';
-		std::cerr << "Input file: " << ap.inpFilePath << '\n';
-		std::cerr << "Output folder: " << ap.outFolderPath << '\n';
-		std::cerr << "Threads: " << ap.threads << '\n';
+		std::cerr << "        Input file: " << ap.inpFilePath << '\n';
+		std::cerr << "        Output folder: " << ap.outFolderPath << '\n';
+		std::cerr << "        Insert size: " << ap.insSz << '\n';
+		std::cerr << "        Standard deviation: " << ap.stdDev << '\n';
+		std::cerr << "        Read length: " << ap.readLen << '\n';
+		std::cerr << "        Coverage: " << ap.cov << '\n';
+		std::cerr << "        Threads: " << ap.threads << '\n';
 	}
 
 	processInput(ap.inpFilePath, ap.insSz, ap.stdDev, ap.readLen, ap.cov, ap.outFolderPath, ap.verbose, ap.threads);

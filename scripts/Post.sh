@@ -3,17 +3,18 @@
 FLANK_SZ=1000
 MIN_MAPPING_QUALITY=20
 
+# Absolute path to samtools executable
 # e.g., replace with "/path/to/samtools"
 if [[ -z $PATH_TO_SAMTOOLS ]]; then
     PATH_TO_SAMTOOLS="samtools"
 fi
 
 function print_usage() {
-    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-c coverage]"
-    echo "  -h, --help  Help"
-    echo "  -i, --inp  Path to input file"
-    echo "  -o, --out  Path to output folder"
-    echo "  -c, --cov  Coverage"
+    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-c coverage]" >&2
+    echo "        -h, --help  Help" >&2
+    echo "        -i, --inp  Path to input file" >&2
+    echo "        -o, --out  Path to output folder" >&2
+    echo "        -c, --cov  Coverage" >&2
 }
 
 function parse_arguments() {
@@ -51,12 +52,12 @@ function parse_arguments() {
 }
 
 function print_arguments() {
-    echo "Input file:" $INP_FILE
-    echo "Output folder:" $OUT_FOLDER
-    echo "Support Large:" $SUPPORT_LARGE
-    echo "Support Imprecise Large:" $SUPPORT_IMP
-    echo "Support Small:" $SUPPORT_SMALL
-    echo "Coverage:" $COVERAGE
+    echo "        Input file:" $INP_FILE >&2
+    echo "        Output folder:" $OUT_FOLDER >&2
+    echo "        Support Large:" $SUPPORT_LARGE >&2
+    echo "        Support Imprecise Large:" $SUPPORT_IMP >&2
+    echo "        Support Small:" $SUPPORT_SMALL >&2
+    echo "        Coverage:" $COVERAGE >&2
 }
 
 function delete_tmp_files() {
@@ -96,21 +97,30 @@ function filter_flanks_coverage() {
 
     paste $COV_EVENT_FILE $COV_A_FILE $COV_B_FILE $SUP_FILE >$COV_FINAL
 
-    awk '{ EV=$4/($3-$2+1); A=$8/1000; B=$12/1000; FL_A=EV/A; FL_B=EV/B; 
+    awk -v IMP_FLAG="$IMP_FLAG" '{ EV=$4/($3-$2+1); A=$8/1000; B=$12/1000; 
         printf("%s\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t", $1, $2, $3, $13, $14, $15, EV, A, B);
-        if (FL_A >= 0.9 || FL_B >= 0.9) 
+        if (A != 0 && B != 0) 
         {
-            printf("0\n");
-        } 
-        else 
-        {
-            printf("1\n");
+            FL_A=EV/A; FL_B=EV/B; 
+            if (FL_A >= 0.9 || FL_B >= 0.9) 
+            {
+                printf("0\t");
+            } 
+            else 
+            {
+                printf("1\t");
+            }
         }
+        else
+        {
+            printf("1\t");
+        }
+        printf("%d\n", IMP_FLAG);
     }' $COV_FINAL >$FILTER_COV_EVENTS
 
-    awk -v IMP_FLAG="$IMP_FLAG" '{ id+=1;
+    awk '{ 
         printf("%s\t%d\t%d\t%s\t%s\t%s\t", $1, $2, id, "N", "<DEL>", ".");
-        if ($10 == 1)
+        if ($10==1)
         {
             printf("PASS\t");
         }
@@ -120,7 +130,7 @@ function filter_flanks_coverage() {
         }
         printf("SVTYPE=DEL;SVLEN=%d;END=%d;SU=%d;PE=%d;SR=%d;SC=%d;COV=%.3f;COV_A=%.3f;COV_B=%.3f;", $3-$2+1, $3, $4+$5+$6, $4, $5, $6, $7, $8, $9);
         GT="./.";
-        if (IMP_FLAG == 1)
+        if ($11==1)
         {
             printf("IMPRECISE;");
         }
@@ -143,7 +153,7 @@ function filter_flanks_coverage() {
     }' $FILTER_COV_EVENTS >>$OUT_FILE
 }
 
-echo "[Step3] Postprocess start"
+echo "[Step3] Postprocess start" >&2
 
 parse_arguments $@
 
@@ -184,4 +194,4 @@ cat $OUT_FOLDER"tmp/pre/header.vcf" >$FINAL_FILE
 echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample" >>$FINAL_FILE
 cat $OUT_SORT_FILE >>$FINAL_FILE
 
-echo "[Step3] Postprocess end"
+echo "[Step3] Postprocess end" >&2

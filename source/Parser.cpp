@@ -30,12 +30,6 @@ void checkFolder(const std::string &folderPath, std::string &outFolderPath)
     {
         closedir(dir);
     }
-    else
-    {
-        outFolderPath = "./";
-        std::cerr << "Output folder path does not exist\n";
-        std::cerr << "Changing output folder path to \".\"";
-    }
 }
 
 bool parseArgs(int argc, char const *argv[], struct ArgsParams &ap)
