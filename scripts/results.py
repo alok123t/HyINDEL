@@ -922,7 +922,7 @@ def platinum():
         '/Users/alok/IIIT/GS/GRCh37_hg19_variants_2016-05-15.txt')
 
     dels_hyindel = readHyINDEL(
-        '/Users/alok/tmp/today/hyindel/tmp/deletions.vcf', delsFlag=True)
+        '/Users/alok/IIIT/Platinum/Output/HyINDEL/output.vcf', delsFlag=True)
     ins_hyindel = readHyINDEL(
         '/Users/alok/IIIT/Platinum/Output/HyINDEL/output.vcf', delsFlag=False)
     lumpy = readLumpy(
@@ -979,7 +979,7 @@ def platinum():
 
 
 def main():
-    # simulations()
+    simulations()
     platinum()
     return
 
