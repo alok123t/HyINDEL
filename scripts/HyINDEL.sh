@@ -155,12 +155,29 @@ parse_arguments $@
 
 print_arguments
 
-# $(dirname $0)/HyINDEL_pre -i $INP_FILE -o $OUT_FOLDER --skip $SKIP_PRE
+$(dirname $0)/HyINDEL_pre -i $INP_FILE -o $OUT_FOLDER --skip $SKIP_PRE
 
-# $(dirname $0)/HyINDEL_dels -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN -c $COVERAGE -t $THREADS
+$(dirname $0)/HyINDEL_dels -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN -c $COVERAGE -t $THREADS
 
-# $(dirname $0)/HyINDEL_post -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE
+$(dirname $0)/HyINDEL_post -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE
 
-# $(dirname $0)/HyINDEL_assembly -i $INP_FILE -o $OUT_FOLDER
+$(dirname $0)/HyINDEL_assembly -i $INP_FILE -o $OUT_FOLDER
 
 $(dirname $0)/HyINDEL_ins -o $OUT_FOLDER -l $READ_LEN -t $THREADS
+
+DELS_FILE=$OUT_FOLDER"tmp/deletions.vcf"
+INS_FILE=$OUT_FOLDER"tmp/insertions.vcf"
+OUT_FILE=$OUT_FOLDER"tmp/out_1.vcf"
+OUT_SORT_FILE=$OUT_FOLDER"tmp/out_2.vcf"
+OUT_ID_FILE=$OUT_FOLDER"tmp/out_3.vcf"
+FINAL_FILE=$OUT_FOLDER"output.vcf"
+
+cat $DELS_FILE $INS_FILE >$OUT_FILE
+
+sort -k1,1 -k2,2n $OUT_FILE >$OUT_SORT_FILE
+
+cat $OUT_SORT_FILE | awk '{ co+=1; printf("%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, co, $4, $5, $6, $7, $8, $9, $10);}' >$OUT_ID_FILE
+
+cat $OUT_FOLDER"tmp/pre/header.vcf" >$FINAL_FILE
+echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample" >>$FINAL_FILE
+cat $OUT_ID_FILE >>$FINAL_FILE

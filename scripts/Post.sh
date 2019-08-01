@@ -62,6 +62,7 @@ function print_arguments() {
 
 function delete_tmp_files() {
     rm -rf $OUT_FOLDER"tmp/post/"
+    rm -f $OUT_FOLDER"tmp/deletions.vcf"
 }
 
 function filter_support() {
@@ -84,11 +85,11 @@ function filter_flanks_coverage() {
     COV_B_FILE=$OUT_FOLDER"tmp/post/2b_"$1
     COV_FINAL=$OUT_FOLDER"tmp/post/3_"$1
     FILTER_COV_EVENTS=$OUT_FOLDER"tmp/post/4_"$1
-    OUT_FILE=$OUT_FOLDER"tmp/post/out.vcf"
+    OUT_FILE=$OUT_FOLDER"tmp/deletions.vcf"
 
     cat $FILTER_DOUBLES | awk '{ printf("%d\t%d\t%d\n", $5, $6, $7) }' >$SUP_FILE
     cat $FILTER_DOUBLES | awk -v FLANK="$FLANK_SZ" '{ printf("%s\t%d\t%d\n", $1, $2, $3) }' >$EVENT_FILE
-    cat $FILTER_DOUBLES | awk -v FLANK="$FLANK_SZ" '{ printf("%s\t%d\t%d\n", $1, $2-FLANK, $2) }' >$A_FILE
+    cat $FILTER_DOUBLES | awk -v FLANK="$FLANK_SZ" '{l=($2-FLANK);L=(l>0)?l:1; printf("%s\t%d\t%d\n", $1, L, $2) }' >$A_FILE
     cat $FILTER_DOUBLES | awk -v FLANK="$FLANK_SZ" '{ printf("%s\t%d\t%d\n", $1, $3, $3+FLANK) }' >$B_FILE
 
     $PATH_TO_SAMTOOLS bedcov -Q $MIN_MAPPING_QUALITY $EVENT_FILE $INP_FILE >$COV_EVENT_FILE
@@ -119,7 +120,7 @@ function filter_flanks_coverage() {
     }' $COV_FINAL >$FILTER_COV_EVENTS
 
     awk '{ 
-        printf("%s\t%d\t%d\t%s\t%s\t%s\t", $1, $2, id, "N", "<DEL>", ".");
+        printf("%s\t%d\t%d\t%s\t%s\t%s\t", $1, $2, "0", "N", "<DEL>", ".");
         if ($10==1)
         {
             printf("PASS\t");
@@ -184,14 +185,5 @@ filter_flanks_coverage "large.txt" 0
 
 filter_support "large_imprecise.txt" $SUPPORT_IMP
 filter_flanks_coverage "large_imprecise.txt" 1
-
-OUT_FILE=$OUT_FOLDER"tmp/post/out.vcf"
-OUT_SORT_FILE=$OUT_FOLDER"tmp/post/out_sort.vcf"
-FINAL_FILE=$OUT_FOLDER"output.vcf"
-
-sort -k1,1 -k2,2n $OUT_FILE >$OUT_SORT_FILE
-cat $OUT_FOLDER"tmp/pre/header.vcf" >$FINAL_FILE
-echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample" >>$FINAL_FILE
-cat $OUT_SORT_FILE >>$FINAL_FILE
 
 echo "[Step3] Postprocess end" >&2

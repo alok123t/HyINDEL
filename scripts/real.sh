@@ -2,12 +2,14 @@
 #SBATCH -A research
 #SBATCH --qos=medium
 #SBATCH -N 1
-#SBATCH -n 22
-#SBATCH -p short
-#SBATCH -w node48
-#SBATCH --time=0-06:00:00
+#SBATCH -n 24
+#SBATCH -p long
+#SBATCH -w node59
+#SBATCH --time=4-00:00:00
 #SBATCH --mem-per-cpu=2048
 #SBATCH --mail-type=END
+
+THREADS=24
 
 Time="/usr/bin/time"
 Bwa="/home/iiit/alok.t/miniconda2/bin/bwa"
@@ -68,7 +70,7 @@ function runPicard() {
 }
 
 function runHyINDEL() {
-    $Time -v $HyINDEL -i $DIR"Input/NA12878_sort.bam" -o $DIR"Output/HyINDEL/" -s 318 -d 78 -l 101 -c 52 -t 22
+    $Time -v $HyINDEL -i $DIR"Input/NA12878_sort.bam" -o $DIR"Output/hyindel/" -s 318 -d 78 -l 101 -c 52 -t $THREADS
 }
 
 function runLumpy() {
@@ -118,7 +120,8 @@ function runPopins() {
 
 # runLumpy
 # runTiddit
-# runPamir
 # runSoftSV
-runHyINDEL
+# runPamir
 # runPopins
+
+runHyINDEL

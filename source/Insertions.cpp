@@ -366,7 +366,7 @@ void smallInsertion(const std::vector<std::string> &upSeq, const std::vector<std
     if (upId == downId && upId != -1)
     {
         std::ofstream ofs;
-        std::string outFile = outFolderPath + "output.vcf";
+        std::string outFile = outFolderPath + "tmp/insertions.vcf";
         ofs.open(outFile, std::ofstream::out | std::ofstream::app);
         int reversedUpPos = contigs.at(upId).size() - upPos;
         int tillLen = downPos - reversedUpPos;
@@ -378,7 +378,6 @@ void smallInsertion(const std::vector<std::string> &upSeq, const std::vector<std
                 ofs.close();
                 return;
             }
-            // ofs << "Small\t" << refName << '\t' << pos << '\t' << upSup << '\t' << downSup << '\t' << out << '\n';
             ofs << refName << '\t' << pos << '\t' << "0" << '\t' << "N" << '\t' << "<INS>" << '\t' << "." << '\t' << "PASS" << '\t'
                 << "SVTYPE=INS;SVLEN=" << out.size() << ";SC=" << upSup + downSup << ";SEQ=" << out << ";" << '\t'
                 << "GT:SU:SC" << '\t' << "./.:" << upSup + downSup << ":" << upSup + downSup << '\n';
@@ -393,7 +392,6 @@ void smallInsertion(const std::vector<std::string> &upSeq, const std::vector<std
                 ofs.close();
                 return;
             }
-            // ofs << "Small\t" << refName << '\t' << pos << '\t' << upSup << '\t' << downSup << '\t' << out << '\n';
             ofs << refName << '\t' << pos << '\t' << "0" << '\t' << "N" << '\t' << "<INS>" << '\t' << "." << '\t' << "PASS" << '\t'
                 << "SVTYPE=INS;SVLEN=" << out.size() << ";SC=" << upSup + downSup << ";SEQ=" << out << ";" << '\t'
                 << "GT:SU:SC" << '\t' << "./.:" << upSup + downSup << ":" << upSup + downSup << '\n';
@@ -435,12 +433,10 @@ void smallInsertion(const std::vector<std::string> &upSeq, const std::vector<std
             std::tuple<bool, std::string, std::string> largeOutput;
             longInsertion(upContig, downContig, largeOutput);
             std::ofstream ofs;
-            std::string outFile = outFolderPath + "output.vcf";
+            std::string outFile = outFolderPath + "tmp/insertions.vcf";
             ofs.open(outFile, std::ofstream::out | std::ofstream::app);
             if (std::get<0>(largeOutput))
             {
-                // ofs << "Large\t" << refName << '\t' << pos << '\t' << upSup << '\t' << downSup << '\t' << std::get<1>(largeOutput) << '\n'
-                //     << std::flush;
                 std::string outSeq = std::get<1>(largeOutput);
                 ofs << refName << '\t' << pos << '\t' << "0" << '\t' << "N" << '\t' << "<INS>" << '\t' << "." << '\t' << "PASS" << '\t'
                     << "SVTYPE=INS;SVLEN=" << outSeq.size() << ";SC=" << upSup + downSup << ";SEQ=" << outSeq << ";" << '\t'
@@ -456,8 +452,6 @@ void smallInsertion(const std::vector<std::string> &upSeq, const std::vector<std
                 // replace with larger orphanDownContig, if found
                 if (std::get<2>(largeOutput).size() > downContig.size())
                     downContig = std::get<2>(largeOutput);
-                // ofs << "Imprecise\t" << refName << '\t' << pos << '\t' << upSup << '\t' << downSup << '\t' << upContig << '\t' << downContig << '\n'
-                //     << std::flush;
                 if (upContig.size() < 50 || downContig.size() < 50)
                 {
                     ofs.close();

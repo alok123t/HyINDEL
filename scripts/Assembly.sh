@@ -63,6 +63,8 @@ print_arguments
 $PATH_TO_SAMTOOLS view -@ 4 -f 12 -F 256 $INP_FILE | awk 'BEGIN{OFS=""}{($2==77)?f=1:f=2;printf("@%s/%d\n%s\n+\n%s\n", $1, f, $10, $11);}' >$OUTPUT_FOLDER"tmp/ins/orphans.fastq"
 echo "        Orphans file:" $OUTPUT_FOLDER"tmp/ins/orphans.fastq" >&2
 
+rm -f $OUTPUT_FOLDER"tmp/insertions.vcf"
+
 for fName in "$OUTPUT_FOLDER"tmp/ins/*.fastq; do
     # Remove tmp files
     rm -f "${fName%.*}".h5 "${fName%.*}".unitigs* "${fName%.*}".contigs.fa

@@ -911,7 +911,7 @@ void openExcludeRegions(const std::string &fPath, std::map<std::string, std::vec
 	}
 	else
 	{
-		std::cerr << "Exclude regions file: " << fPath << '\n';
+		std::cerr << "        Exclude regions file: " << fPath << '\n';
 	}
 
 	while (fs >> exChr >> exSt >> exEn)
@@ -939,7 +939,7 @@ void openInputIntervals(const std::string &fPath, std::vector<std::tuple<std::st
 	}
 	else
 	{
-		std::cerr << "Input regions file: " << fPath << '\n';
+		std::cerr << "        Input regions file: " << fPath << '\n';
 	}
 
 	std::string chr;

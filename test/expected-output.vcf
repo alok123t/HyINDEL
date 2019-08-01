@@ -1,7 +1,10 @@
 ##fileformat=VCFv4.2
-##source=indel-detect
+##source=HyINDEL
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description=Type of structural variant>
 ##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=Difference in length between REF and ALT alleles>
+##INFO=<ID=SEQ,Number=.,Type=String,Description=Novel sequence insertion>
+##INFO=<ID=SEQUP,Number=.,Type=String,Description=Partial upstream sequence insertion>
+##INFO=<ID=SEQDOWN,Number=.,Type=String,Description=Partial downstream sequence insertion>
 ##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description=Imprecise structural variation>
 ##INFO=<ID=SUP,Number=.,Type=Integer,Description=Total number of reads supporting this variant>
 ##INFO=<ID=PE,Number=.,Type=Integer,Description=Number of paired-end reads supporting this variant>
@@ -9,7 +12,16 @@
 ##INFO=<ID=SC,Number=.,Type=Integer,Description=Number of softclip reads supporting this variant>
 ##INFO=<ID=COV,Number=.,Type=Float,Description=Coverage in between breakpoints>
 ##ALT=<ID=DEL,Description=Deletion>
+##ALT=<ID=INS,Description=Insertion>
 ##contig=<ID=1,length=249250621>
+##contig=<ID=2,length=243199373>
+##contig=<ID=3,length=198022430>
+##contig=<ID=4,length=191154276>
+##contig=<ID=5,length=180915260>
+##contig=<ID=6,length=171115067>
+##contig=<ID=7,length=159138663>
+##contig=<ID=8,length=146364022>
+##contig=<ID=9,length=141213431>
 ##contig=<ID=10,length=135534747>
 ##contig=<ID=11,length=135006516>
 ##contig=<ID=12,length=133851895>
@@ -20,80 +32,71 @@
 ##contig=<ID=17,length=81195210>
 ##contig=<ID=18,length=78077248>
 ##contig=<ID=19,length=59128983>
-##contig=<ID=2,length=243199373>
 ##contig=<ID=20,length=63025520>
 ##contig=<ID=21,length=48129895>
 ##contig=<ID=22,length=51304566>
-##contig=<ID=3,length=198022430>
-##contig=<ID=4,length=191154276>
-##contig=<ID=5,length=180915260>
-##contig=<ID=6,length=171115067>
-##contig=<ID=7,length=159138663>
-##contig=<ID=8,length=146364022>
-##contig=<ID=9,length=141213431>
-##contig=<ID=MT,length=16569>
 ##contig=<ID=X,length=155270560>
 ##contig=<ID=Y,length=59373566>
-##contig=<ID=GL000192.1,length=547496>
-##contig=<ID=GL000225.1,length=211173>
-##contig=<ID=GL000194.1,length=191469>
-##contig=<ID=GL000193.1,length=189789>
-##contig=<ID=GL000200.1,length=187035>
-##contig=<ID=GL000222.1,length=186861>
-##contig=<ID=GL000212.1,length=186858>
-##contig=<ID=GL000195.1,length=182896>
-##contig=<ID=GL000223.1,length=180455>
-##contig=<ID=GL000224.1,length=179693>
-##contig=<ID=GL000219.1,length=179198>
-##contig=<ID=GL000205.1,length=174588>
-##contig=<ID=GL000215.1,length=172545>
-##contig=<ID=GL000216.1,length=172294>
-##contig=<ID=GL000217.1,length=172149>
-##contig=<ID=GL000199.1,length=169874>
-##contig=<ID=GL000211.1,length=166566>
-##contig=<ID=GL000213.1,length=164239>
-##contig=<ID=GL000220.1,length=161802>
-##contig=<ID=GL000218.1,length=161147>
-##contig=<ID=GL000209.1,length=159169>
-##contig=<ID=GL000221.1,length=155397>
-##contig=<ID=GL000214.1,length=137718>
-##contig=<ID=GL000228.1,length=129120>
-##contig=<ID=GL000227.1,length=128374>
-##contig=<ID=GL000191.1,length=106433>
-##contig=<ID=GL000208.1,length=92689>
-##contig=<ID=GL000198.1,length=90085>
-##contig=<ID=GL000204.1,length=81310>
-##contig=<ID=GL000233.1,length=45941>
-##contig=<ID=GL000237.1,length=45867>
-##contig=<ID=GL000230.1,length=43691>
-##contig=<ID=GL000242.1,length=43523>
-##contig=<ID=GL000243.1,length=43341>
-##contig=<ID=GL000241.1,length=42152>
-##contig=<ID=GL000236.1,length=41934>
-##contig=<ID=GL000240.1,length=41933>
-##contig=<ID=GL000206.1,length=41001>
-##contig=<ID=GL000232.1,length=40652>
-##contig=<ID=GL000234.1,length=40531>
-##contig=<ID=GL000202.1,length=40103>
-##contig=<ID=GL000238.1,length=39939>
-##contig=<ID=GL000244.1,length=39929>
-##contig=<ID=GL000248.1,length=39786>
-##contig=<ID=GL000196.1,length=38914>
-##contig=<ID=GL000249.1,length=38502>
-##contig=<ID=GL000246.1,length=38154>
-##contig=<ID=GL000203.1,length=37498>
-##contig=<ID=GL000197.1,length=37175>
-##contig=<ID=GL000245.1,length=36651>
-##contig=<ID=GL000247.1,length=36422>
-##contig=<ID=GL000201.1,length=36148>
-##contig=<ID=GL000235.1,length=34474>
-##contig=<ID=GL000239.1,length=33824>
-##contig=<ID=GL000210.1,length=27682>
-##contig=<ID=GL000231.1,length=27386>
-##contig=<ID=GL000229.1,length=19913>
-##contig=<ID=GL000226.1,length=15008>
+##contig=<ID=MT,length=16569>
 ##contig=<ID=GL000207.1,length=4262>
+##contig=<ID=GL000226.1,length=15008>
+##contig=<ID=GL000229.1,length=19913>
+##contig=<ID=GL000231.1,length=27386>
+##contig=<ID=GL000210.1,length=27682>
+##contig=<ID=GL000239.1,length=33824>
+##contig=<ID=GL000235.1,length=34474>
+##contig=<ID=GL000201.1,length=36148>
+##contig=<ID=GL000247.1,length=36422>
+##contig=<ID=GL000245.1,length=36651>
+##contig=<ID=GL000197.1,length=37175>
+##contig=<ID=GL000203.1,length=37498>
+##contig=<ID=GL000246.1,length=38154>
+##contig=<ID=GL000249.1,length=38502>
+##contig=<ID=GL000196.1,length=38914>
+##contig=<ID=GL000248.1,length=39786>
+##contig=<ID=GL000244.1,length=39929>
+##contig=<ID=GL000238.1,length=39939>
+##contig=<ID=GL000202.1,length=40103>
+##contig=<ID=GL000234.1,length=40531>
+##contig=<ID=GL000232.1,length=40652>
+##contig=<ID=GL000206.1,length=41001>
+##contig=<ID=GL000240.1,length=41933>
+##contig=<ID=GL000236.1,length=41934>
+##contig=<ID=GL000241.1,length=42152>
+##contig=<ID=GL000243.1,length=43341>
+##contig=<ID=GL000242.1,length=43523>
+##contig=<ID=GL000230.1,length=43691>
+##contig=<ID=GL000237.1,length=45867>
+##contig=<ID=GL000233.1,length=45941>
+##contig=<ID=GL000204.1,length=81310>
+##contig=<ID=GL000198.1,length=90085>
+##contig=<ID=GL000208.1,length=92689>
+##contig=<ID=GL000191.1,length=106433>
+##contig=<ID=GL000227.1,length=128374>
+##contig=<ID=GL000228.1,length=129120>
+##contig=<ID=GL000214.1,length=137718>
+##contig=<ID=GL000221.1,length=155397>
+##contig=<ID=GL000209.1,length=159169>
+##contig=<ID=GL000218.1,length=161147>
+##contig=<ID=GL000220.1,length=161802>
+##contig=<ID=GL000213.1,length=164239>
+##contig=<ID=GL000211.1,length=166566>
+##contig=<ID=GL000199.1,length=169874>
+##contig=<ID=GL000217.1,length=172149>
+##contig=<ID=GL000216.1,length=172294>
+##contig=<ID=GL000215.1,length=172545>
+##contig=<ID=GL000205.1,length=174588>
+##contig=<ID=GL000219.1,length=179198>
+##contig=<ID=GL000224.1,length=179693>
+##contig=<ID=GL000223.1,length=180455>
+##contig=<ID=GL000195.1,length=182896>
+##contig=<ID=GL000212.1,length=186858>
+##contig=<ID=GL000222.1,length=186861>
+##contig=<ID=GL000200.1,length=187035>
+##contig=<ID=GL000193.1,length=189789>
+##contig=<ID=GL000194.1,length=191469>
+##contig=<ID=GL000225.1,length=211173>
+##contig=<ID=GL000192.1,length=547496>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample
-18	8099907	1	N	<DEL>	.	PASS	SVTYPE=DEL;SVLEN=435;END=8100341;SU=10;PE=4;SR=2;SC=4;COV=0.002;COV_A=5.565;COV_B=5.499;	SU:PE:SR:SC	10:4:2:4
-18	8402619	2	N	<DEL>	.	PASS	SVTYPE=DEL;SVLEN=8721;END=8411339;SU=12;PE=8;SR=1;SC=3;COV=0.000;COV_A=5.694;COV_B=5.055;	SU:PE:SR:SC	12:8:1:3
-18	8585230	3	N	<DEL>	.	PASS	SVTYPE=DEL;SVLEN=334;END=8585563;SU=6;PE=2;SR=3;SC=1;COV=0.000;COV_A=5.905;COV_B=5.630;	SU:PE:SR:SC	6:2:3:1
+2	5522297	1	N	<DEL>	.	PASS	SVTYPE=DEL;SVLEN=8314;END=5530610;SU=45;PE=24;SR=9;SC=12;COV=0.000;COV_A=29.879;COV_B=31.366;	GT:SU:PE:SR:SC	1/1:45:24:9:12
+2	5768420	2	N	<INS>	.	PASS	SVTYPE=INS;SVLEN=466;SC=16;SEQ=GAAGACAGGAAACAGTAACGCTCTGCTCCAAATGTGAGGAGGAAATTCATACAAGTAACAGGGCTTCTTACACTTGACCCGTCCGACTTGCACCGTATTGACCGGTGCTTGAGATCCACGCATTAAAAGGTCAGATATTCCGGGTGGCCCAATTCGTGTTCCGTAGCGCAACTCTAGCTATCGACACATCGCTTACCTGGTCGGACGTGTTGGGAGTTTAGCTTCTTGAACCTGAATAACTGCCCAAACCGCCCGTGAGCTTAACCTTATAAAGTACGCTCCTCGTCCGTATTGCCCGGCGCTCGGGAGGACGGCGGCGCAGGGCGTGTATAAATGTTCGACACGGGTGAGGACCGGGGCTCGACTCCTTTAAGGGAGAACCGCCCCCCGGGCTTCTGCGCAGATTTAAATAGCTGCTTGGGGATCGCGTCTTATGGCGACATCGCAGGGTCAGCGCTCTCCAGAA;	GT:SU:SC	./.:16:16

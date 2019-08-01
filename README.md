@@ -39,7 +39,7 @@ Note:
 
 ### Test Example
 ```shell
-HyINDEL -i ../test/input.bam -o ../test/output -s 350 -d 50 -l 100 -c 5 -t 4
+HyINDEL -i ../test/input.bam -o ../test/output -s 350 -d 20 -l 100 -c 30 -t 4
 ```
 Compare output with file `test/expected-output.vcf`
 

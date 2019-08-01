@@ -2,14 +2,14 @@
 #SBATCH -A research
 #SBATCH --qos=medium
 #SBATCH -N 1
-#SBATCH -n 22
+#SBATCH -n 24
 #SBATCH -p short
 #SBATCH -w node48
 #SBATCH --time=0-06:00:00
 #SBATCH --mem-per-cpu=2048
 #SBATCH --mail-type=END
 
-THREADS=22
+THREADS=24
 
 Time="/usr/bin/time"
 SVsim="/home/iiit/alok.t/Tools/SVsim/SVsim"
@@ -148,7 +148,7 @@ function runHyINDEL() {
 # runPicard 20
 # runPicard 10
 
-# runHyINDEL 30
+runHyINDEL 30
 # runHyINDEL 20
 # runHyINDEL 10
 
