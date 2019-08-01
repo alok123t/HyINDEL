@@ -11,11 +11,6 @@ Tested with GCC (minimum tested version 4.9.2 check using gcc -v), C++11 support
 * [Mosdepth](https://github.com/brentp/mosdepth#installation)
 * [Samtools](https://github.com/samtools/samtools#building-samtools)
 
-Alternatively using conda
-```shell
-conda install -c bioconda mosdepth samtools
-```
-
 ```shell
 git clone --recursive https://github.com/alok123t/HyINDEL.git
 cd HyINDEL && mkdir -p build && cd build
@@ -28,14 +23,14 @@ mkdir -p /path/to/install/dir
 cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/install/dir && make -j 4 install
 ```
 
+Note: 
+* Make sure paths to minia, mosdepth and samtools are on [PATH](https://www.wikihow.com/Change-the-Path-Variable-in-Linux), otherwise write the absolute paths before installation in `scripts/Assemble.sh`, `scripts/Pre.sh` and `scripts/Post.sh`
+* Will install/replace bamtools if already present in installation directory
+
 ## Usage
 ```shell
 HyINDEL --help
 ```
-
-Note: 
-* Make sure paths to minia, mosdepth and samtools are on [PATH](https://www.wikihow.com/Change-the-Path-Variable-in-Linux), otherwise write the absolute path before installation in `scripts/Assemble.sh`, `scripts/Pre.sh` and `scripts/Post.sh`
-* Will install/replace bamtools if already present in installation directory
 
 ### Test Example
 ```shell
