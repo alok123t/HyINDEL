@@ -89,10 +89,6 @@ parse_arguments $@
 
 print_arguments
 
-mkdir -p $OUT_FOLDER/tmp/ins
-mkdir -p $OUT_FOLDER/tmp/dels
-mkdir -p $OUT_FOLDER/tmp/pre
-
 # Get chromosome sizes from header
 $(dirname "$0")/bamtools header -in $INP_FILE >$OUT_FOLDER"tmp/pre/chr_sizes.bed"
 
@@ -125,6 +121,6 @@ echo "        Exclude Cutoff:" $EXCLUDE_CUTOFF >&2
 cat $OUT_FOLDER"tmp/pre/cov.regions.sort.bed" | awk -v EXC="$EXCLUDE_CUTOFF" '{if ($4 >= EXC) {printf("%s\t%d\t%d\n", $1,$2,$3)}}' >$OUT_FOLDER"tmp/pre/remove_chr_windows.bed"
 
 # Delete large tmp files
-rm $OUT_FOLDER"tmp/pre/cov.regions.bed" $OUT_FOLDER"tmp/pre/cov.regions.sort.bed"
+rm $OUT_FOLDER"tmp/pre/cov.regions.bed" $OUT_FOLDER"tmp/pre/cov.regions.sort.bed" $OUT_FOLDER"tmp/pre/cov.regions.bed.gz" $OUT_FOLDER"tmp/pre/cov.mosdepth.region.dist.txt" $OUT_FOLDER"tmp/pre/cov.mosdepth.global.dist.txt"
 
 echo "[Step1] Preprocess end" >&2

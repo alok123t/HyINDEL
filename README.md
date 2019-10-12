@@ -8,6 +8,7 @@
 Tested with GCC (minimum tested version 4.9.2 check using gcc -v), C++11 support required
 * [CMake](https://cmake.org/download/)
 * [Minia](https://github.com/GATB/minia#instructions)
+* [Minimap2](https://github.com/lh3/minimap2#getting-started)
 * [Mosdepth](https://github.com/brentp/mosdepth#installation)
 * [Samtools](https://github.com/samtools/samtools#building-samtools)
 
@@ -24,7 +25,7 @@ cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/install/dir && make -j 4 install
 ```
 
 Note: 
-* Make sure paths to minia, mosdepth and samtools are on [PATH](https://www.wikihow.com/Change-the-Path-Variable-in-Linux), otherwise write the absolute paths before installation in `scripts/Assemble.sh`, `scripts/Pre.sh` and `scripts/Post.sh`
+* Make sure paths to minia, minimap2, mosdepth and samtools are on [PATH](https://www.wikihow.com/Change-the-Path-Variable-in-Linux), otherwise write the absolute paths before installation in `scripts/Assemble.sh`, `scripts/Pre.sh` and `scripts/Post.sh`
 * Will install/replace bamtools if already present in installation directory
 
 ## Usage
@@ -34,7 +35,7 @@ HyINDEL --help
 
 ### Test Example
 ```shell
-HyINDEL -i ../test/input.bam -o ../test/output -s 350 -d 20 -l 100 -c 30 -t 4
+HyINDEL -i ../test/input.bam -o ../test/output -r ../test/ref.fa -s 350 -d 20 -l 100 -c 30 -t 4
 ```
 Compare output with file `test/expected-output.vcf`
 

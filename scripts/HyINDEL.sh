@@ -4,10 +4,11 @@ THREADS=1
 SKIP_PRE=0
 
 function print_usage() {
-    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-s insert size] [-d standard deviation] [-l read length] [-c coverage] [-t threads]" >&2
+    echo "Usage: $0 [-i /path/to/file] [-o /path/to/folder] [-r /path/to/file] [-s insert size] [-d standard deviation] [-l read length] [-c coverage] [-t threads]" >&2
     echo "  -h, --help  Help" >&2
     echo "  -i, --inp  Path to input file" >&2
     echo "  -o, --out  Path to output folder" >&2
+    echo "  -r, --ref  Path to reference file" >&2
     echo "  -s, --insSz  Median Insert size" >&2
     echo "  -d, --stdDev  Median Standard deviation" >&2
     echo "  -l, --readLen  Read length" >&2
@@ -38,6 +39,10 @@ function parse_arguments() {
                 if [ $LAST_CHAR_OUT_FOLDER != "/" ]; then
                     OUT_FOLDER="${OUT_FOLDER}/"
                 fi
+                ;;
+            -r | --ref)
+                shift
+                REF_FILE=$1
                 ;;
             -s | --insSz)
                 shift
@@ -92,6 +97,17 @@ function print_arguments() {
             # Create folder if it doesn't exist
             mkdir -p $OUT_FOLDER
             echo "        Output folder:" $OUT_FOLDER "created" >&2
+        fi
+    fi
+    if [[ -z $REF_FILE ]]; then
+        echo "ERROR: -r missing" >&2
+        INVALID_ARG=1
+    else
+        if [[ -e $REF_FILE ]]; then
+            echo "        Reference file:" $REF_FILE >&2
+        else
+            echo "ERROR: " $REF_FILE "does not exist" >&2
+            exit
         fi
     fi
     if [[ -z $INS_SZ ]]; then
@@ -155,15 +171,17 @@ parse_arguments $@
 
 print_arguments
 
+mkdir -p $OUT_FOLDER/tmp/pre $OUT_FOLDER/tmp/dels $OUT_FOLDER/tmp/ins $OUT_FOLDER/tmp/post
+
 $(dirname $0)/HyINDEL_pre -i $INP_FILE -o $OUT_FOLDER --skip $SKIP_PRE
 
 $(dirname $0)/HyINDEL_dels -i $INP_FILE -o $OUT_FOLDER -s $INS_SZ -d $STD_DEV -l $READ_LEN -c $COVERAGE -t $THREADS
 
 $(dirname $0)/HyINDEL_post -i $INP_FILE -o $OUT_FOLDER -c $COVERAGE
 
-$(dirname $0)/HyINDEL_assembly -i $INP_FILE -o $OUT_FOLDER
+$(dirname $0)/HyINDEL_assembly -i $INP_FILE -o $OUT_FOLDER -r $REF_FILE
 
-$(dirname $0)/HyINDEL_ins -o $OUT_FOLDER -l $READ_LEN -t $THREADS
+$(dirname $0)/HyINDEL_ins -i $OUT_FOLDER"tmp/ins/31_contigs_sort.bam" -o $OUT_FOLDER
 
 DELS_FILE=$OUT_FOLDER"tmp/deletions.vcf"
 INS_FILE=$OUT_FOLDER"tmp/insertions.vcf"
@@ -181,3 +199,5 @@ cat $OUT_SORT_FILE | awk '{ co+=1; printf("%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%
 cat $OUT_FOLDER"tmp/pre/header.vcf" >$FINAL_FILE
 echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample" >>$FINAL_FILE
 cat $OUT_ID_FILE >>$FINAL_FILE
+
+rm $OUT_FILE $OUT_SORT_FILE $OUT_ID_FILE

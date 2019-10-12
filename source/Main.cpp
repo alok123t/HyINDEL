@@ -13,7 +13,7 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	std::cerr << "[Step2] Deletions start\n";
+	std::cerr << "[Step2] Deletions start\n" << std::flush;;
 
 	if (ap.verbose)
 	{
@@ -33,10 +33,10 @@ int main(int argc, char const *argv[])
 	{
 		std::cerr << "Time taken: " << std::setprecision(1)
 				  << (std::chrono::duration_cast<std::chrono::seconds>(timeEnd - timeStart).count())
-				  << " secs" << '\n';
+				  << " secs" << '\n' << std::flush;;
 	}
 
-	std::cerr << "[Step2] Deletions end\n";
+	std::cerr << "[Step2] Deletions end\n" << std::flush;;
 
 	return EXIT_SUCCESS;
 }

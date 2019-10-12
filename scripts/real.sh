@@ -3,9 +3,9 @@
 #SBATCH --qos=medium
 #SBATCH -N 1
 #SBATCH -n 24
-#SBATCH -p long
-#SBATCH -w node59
-#SBATCH --time=4-00:00:00
+#SBATCH -p short
+#SBATCH -w node48
+#SBATCH --time=0-06:00:00
 #SBATCH --mem-per-cpu=2048
 #SBATCH --mail-type=END
 
@@ -70,7 +70,7 @@ function runPicard() {
 }
 
 function runHyINDEL() {
-    $Time -v $HyINDEL -i $DIR"Input/NA12878_sort.bam" -o $DIR"Output/hyindel/" -s 318 -d 78 -l 101 -c 52 -t $THREADS
+    $Time -v $HyINDEL -i $DIR"Input/NA12878_sort.bam" -o $DIR"Output/hyindel/" -r $REF -s 318 -d 78 -l 101 -c 52 -t $THREADS
 }
 
 function runLumpy() {

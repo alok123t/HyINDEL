@@ -462,11 +462,11 @@ void outputFastq(BamTools::BamAlignment &aln, std::ofstream &ofs)
 		<< qualities << '\n';
 }
 
-void writeReads(BamTools::BamReader &br, const BamTools::RefVector &ref, int refID, const std::string &refName, int st, int en, int bpRegion, std::vector<OutNode> &insOutput, const std::string &folderPath)
+void writeReads(BamTools::BamReader &br, const BamTools::RefVector &ref, int refID, const std::string &refName, int st, int en, int bpRegion, const std::string &folderPath)
 {
 	std::ofstream ofs;
-	std::string outFile = folderPath + "tmp/ins/" + refName + "_" + std::to_string(st) + ".fastq";
-	ofs.open(outFile, std::ofstream::out);
+	std::string outFile = folderPath + "tmp/ins/reads.fastq";
+	ofs.open(outFile, std::ofstream::out | std::ofstream::app);
 
 	std::vector<SoftNode> insNodesUp, insNodesDown;
 	std::vector<SoftCluster> insClustersUp, insClustersDown;
@@ -495,104 +495,9 @@ void writeReads(BamTools::BamReader &br, const BamTools::RefVector &ref, int ref
 		}
 	}
 	ofs.close();
-
-	std::sort(insNodesUp.begin(), insNodesUp.end(), SoftCmp);
-	std::sort(insNodesDown.begin(), insNodesDown.end(), SoftCmp);
-
-	clusterSC(insNodesUp, insClustersUp);
-	clusterSC(insNodesDown, insClustersDown);
-
-	int bestUpIdx = -1, bestDownIdx = -1, bestSup = 0;
-	for (int i = 0; i < insClustersUp.size(); ++i)
-	{
-		SoftCluster up = insClustersUp.at(i);
-		if (up.nodes.size() <= MIN_SC_CLUSTER_SUPPORT)
-			continue;
-		for (int j = 0; j < insClustersDown.size(); ++j)
-		{
-			SoftCluster down = insClustersDown.at(j);
-			if (down.nodes.size() <= MIN_SC_CLUSTER_SUPPORT)
-				continue;
-			if (down.info.scPos - up.info.scPos > MAX_INS_DIFF_CLUSTERS)
-				break;
-			if (down.info.scPos - up.info.scPos < MIN_INS_DIFF_CLUSTERS)
-				continue;
-			int curSup = up.nodes.size() + down.nodes.size();
-			if (curSup > bestSup)
-			{
-				bestSup = curSup;
-				bestUpIdx = i;
-				bestDownIdx = j;
-			}
-		}
-	}
-	if (bestSup != 0)
-	{
-		std::string insUpSeq, insDownSeq;
-		std::vector<std::string> up, down;
-		for (SoftNode sn : insClustersUp.at(bestUpIdx).nodes)
-		{
-			int matchLen = sn.scPos - sn.start;
-			// from matchLen onwards till end
-			if (matchLen >= sn.seq.size())
-				continue;
-			std::string here = sn.seq.substr(matchLen);
-			up.emplace_back(here);
-		}
-		for (SoftNode sn : insClustersDown.at(bestDownIdx).nodes)
-		{
-			int scLen = sn.seq.size() - (sn.end - sn.scPos);
-			// from start till scPos
-			std::string here = sn.seq.substr(0, scLen);
-			down.emplace_back(here);
-		}
-
-		std::sort(up.begin(), up.end(), cmpLen);
-		std::sort(down.begin(), down.end(), cmpLen);
-
-		up.resize(3);
-		down.resize(3);
-
-		// very small SC sequences, ignore candidate site
-		if (up.back().size() < MIN_INS_SC_SIZE || down.back().size() < MIN_INS_SC_SIZE)
-		{
-			// remove the contigs file generated above
-			remove(outFile.c_str());
-			return;
-		}
-
-		std::ofstream ofsSeq;
-		std::string scSeqFile = folderPath + "tmp/ins/" + refName + "_" + std::to_string(st) + ".seq";
-		ofsSeq.open(scSeqFile, std::ofstream::out);
-
-		ofsSeq << up.size() << '\n';
-		for (int i = 0; i < up.size(); i++)
-			ofsSeq << up.at(i) << '\n';
-		ofsSeq << down.size() << '\n';
-		for (int i = 0; i < down.size(); i++)
-			ofsSeq << down.at(i) << '\n';
-		ofsSeq << refName << '\n'
-			   << st << '\n'
-			   << insClustersUp.at(bestUpIdx).nodes.size() << '\n'
-			   << insClustersDown.at(bestDownIdx).nodes.size() << '\n';
-		ofsSeq.close();
-
-		OutNode on(ref.at(insClustersUp.at(bestUpIdx).info.refID).RefName, insClustersUp.at(bestUpIdx).info.scPos, insClustersDown.at(bestDownIdx).info.scPos, 0, 0, insClustersUp.at(bestUpIdx).nodes.size() + insClustersDown.at(bestDownIdx).nodes.size());
-		insOutput.emplace_back(on);
-	}
 }
 
-bool checkClosebyIns(const std::vector<OutNode> &insOutput, const std::string chr, const int st, const int en)
-{
-	for (OutNode on : insOutput)
-	{
-		if (on.chr == chr && abs(on.st - st) <= MAX_INS_CLOSE && abs(on.en - en) <= MAX_INS_CLOSE)
-			return true;
-	}
-	return false;
-}
-
-void insertions(BamTools::BamReader &br, const BamTools::RefVector &ref, const int bpRegion, const std::vector<SoftCluster> &scClustersUp, const std::vector<SoftCluster> &scClustersDown, std::vector<OutNode> &insOutput, const std::string &folderPath)
+void insertions(BamTools::BamReader &br, const BamTools::RefVector &ref, const int bpRegion, const std::vector<SoftCluster> &scClustersUp, const std::vector<SoftCluster> &scClustersDown, const std::string &folderPath)
 {
 	for (SoftCluster scUp : scClustersUp)
 	{
@@ -618,9 +523,7 @@ void insertions(BamTools::BamReader &br, const BamTools::RefVector &ref, const i
 		{
 			int st = scUp.info.scPos;
 			int en = scClustersDown.at(bestIdx).info.scPos;
-			if (checkClosebyIns(insOutput, ref.at(scUp.info.refID).RefName, st, en))
-				continue;
-			writeReads(br, ref, scUp.info.refID, ref.at(scUp.info.refID).RefName, st, en, bpRegion, insOutput, folderPath);
+			writeReads(br, ref, scUp.info.refID, ref.at(scUp.info.refID).RefName, st, en, bpRegion, folderPath);
 		}
 	}
 }
@@ -973,9 +876,9 @@ void parallelProcess(const std::tuple<std::string, int, int> &region, const BamT
 
 	readInput(br, ref, bpRegion, verbose, exRegions, discClusters, scClustersUp, scClustersDown, dDelClusters, outFolderPath);
 
-	std::vector<OutNode> insOutput, smallOutput, largeOutput, impreciseOutput;
+	std::vector<OutNode> smallOutput, largeOutput, impreciseOutput;
 
-	insertions(br, ref, bpRegion, scClustersUp, scClustersDown, insOutput, outFolderPath);
+	insertions(br, ref, bpRegion, scClustersUp, scClustersDown, outFolderPath);
 
 	directDeletions(dDelClusters, outFolderPath);
 
@@ -990,7 +893,6 @@ void parallelProcess(const std::tuple<std::string, int, int> &region, const BamT
 	parseOutput(outFolderPath, smallOutput, 0);
 	parseOutput(outFolderPath, largeOutput, 1);
 	parseOutput(outFolderPath, impreciseOutput, 2);
-	parseOutput(outFolderPath, insOutput, 3);
 
 	br.Close();
 }
@@ -1027,7 +929,7 @@ void processInput(const std::string &inpFilePath, const int insSz, const int std
 		refCo++;
 	}
 
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 3; i++)
 		headerOutput(outFolderPath, i);
 
 	int bpRegion = insSz + (3 * stdDev);

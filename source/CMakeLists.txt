@@ -9,8 +9,8 @@ set( SOURCES
     ${CMAKE_SOURCE_DIR}/source/Writer.hpp
     )
 
-set ( SOURCES_INS
-    ${CMAKE_SOURCE_DIR}/source/Insertions.cpp
+set ( INS
+    ${CMAKE_SOURCE_DIR}/source/Ins.cpp
     )
 
 include_directories( "${CMAKE_SOURCE_DIR}/external/" )
@@ -20,8 +20,8 @@ add_executable( HyINDEL_dels ${SOURCES} )
 target_link_libraries( HyINDEL_dels Threads::Threads )
 target_link_libraries( HyINDEL_dels BamTools )
 
-add_executable( HyINDEL_ins ${SOURCES_INS} )
-target_link_libraries( HyINDEL_ins Threads::Threads )
+add_executable( HyINDEL_ins ${INS} )
+target_link_libraries( HyINDEL_ins BamTools )
 
 install( TARGETS HyINDEL_dels
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 

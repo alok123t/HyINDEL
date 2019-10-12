@@ -3,7 +3,7 @@
 const std::string suffixDelsLarge = "tmp/dels/large.txt";
 const std::string suffixDelsSmall = "tmp/dels/small.txt";
 const std::string suffixDelsLargeImprecise = "tmp/dels/large_imprecise.txt";
-const std::string suffixIns = "tmp/ins.txt";
+const std::string suffixIns = "tmp/ins/ins.txt";
 
 std::string suffixFn(int outputType)
 {
@@ -13,8 +13,6 @@ std::string suffixFn(int outputType)
 		return suffixDelsLarge;
 	else if (outputType == 2)
 		return suffixDelsLargeImprecise;
-	else if (outputType == 3)
-		return suffixIns;
 	else
 		return std::string();
 }

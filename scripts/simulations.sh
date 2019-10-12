@@ -134,7 +134,7 @@ function runPamir() {
 # Args: Cov
 function runHyINDEL() {
     ALN_FOLDER=$DIR"Input/"$1"x/"
-    $Time -v $HyINDEL -i $ALN_FOLDER"sim.bam" -o $DIR"Output/"$1"x/hyindel/" -s 350 -d 20 -l 100 -c $1 -t $THREADS
+    $Time -v $HyINDEL -i $ALN_FOLDER"sim.bam" -o $DIR"Output/"$1"x/hyindel/" -r $REF -s 350 -d 20 -l 100 -c $1 -t $THREADS
 }
 
 # downloadReference
@@ -149,8 +149,8 @@ function runHyINDEL() {
 # runPicard 10
 
 runHyINDEL 30
-# runHyINDEL 20
-# runHyINDEL 10
+runHyINDEL 20
+runHyINDEL 10
 
 # runLumpy 10
 # runLumpy 20

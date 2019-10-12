@@ -46,8 +46,8 @@ const int DEL_MERGE_DIS = 5;
 const double DDEL_RO = 0.90;
 const int MIN_DDEL_SUPPORT = 5;
 
-const int MIN_INS_DIFF_CLUSTERS = -5;
-const int MAX_INS_DIFF_CLUSTERS = 5;
+const int MIN_INS_DIFF_CLUSTERS = -30;
+const int MAX_INS_DIFF_CLUSTERS = 30;
 const int MAX_INS_CLOSE = 10;
 const int MIN_INS_SC_SIZE = 20;
 
@@ -121,6 +121,18 @@ struct SoftCluster
     SoftCluster() : info() {}
 
     SoftCluster(SoftNode t_sn) : info(t_sn) { nodes.emplace_back(t_sn); }
+};
+
+struct InsOutput
+{
+    std::string chr;
+    int pos;
+    std::string seq;
+    bool ty;
+    int loc; // -1 for direct ins, 0 for left SC, 1 for right SC
+    std::string readName;
+    std::string seqUp, seqDown; // for imprecise mergedPartialPredictions
+    InsOutput(std::string t_chr, int t_pos, std::string t_seq, bool t_ty, int t_loc, std::string t_readName) : chr(t_chr), pos(t_pos), seq(t_seq), ty(t_ty), loc(t_loc), readName(t_readName) {}
 };
 
 inline bool SoftCmp(const SoftNode &a, const SoftNode &b)

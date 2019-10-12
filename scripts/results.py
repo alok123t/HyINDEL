@@ -143,11 +143,11 @@ def readHyINDEL(fName, delsFlag):
             else:
                 if l[4] != '<INS>':
                     continue
-                if 'IMPRECISE' in l[7]:
+                if 'IMPRECISE' in l[7] or 'SEQUP' in l[7] or 'SEQDOWN' in l[7]:
                     ret.append(Insertion(t_chr=l[0], t_pos=int(l[1])))
                 else:
                     info_col = l[7].split(';')
-                    seq = info_col[3].split('=')[1]
+                    seq = info_col[2].split('=')[1]
                     seqLen = len(seq)
                     isSmall = False
                     if seqLen <= 500:
@@ -399,6 +399,7 @@ def compare(toolUnfiltered, ref, toolName, delsFlag, checkHomoAndSmall=False, ch
         tool = toolUnfiltered
 
     found = [-1] * len(tool)
+    print(len(tool))
 
     dis = []
     sup = []
@@ -577,38 +578,37 @@ def supPlot(sup):
 
     ax1.hist(sup[0], bins=bins_sz, ec='black')
     ax1.set_ylim([0, 200])
-    ax1.set_ylabel('Number of deletions')
+    ax1.set_ylabel('No. of deletions')
     ax1.set_xlabel('Breakpoint Support')
-    ax1.set_title('HyINDEL')
+    ax1.set_title('(a)')
     ax1.axvline(median(sup[0]), linestyle='dashed',
                 color='k', linewidth=1)
 
     ax2.hist(sup[1], bins=bins_sz, ec='black')
     ax2.set_ylim([0, 200])
-    ax2.set_ylabel('Number of deletions')
+    ax2.set_ylabel('No. of deletions')
     ax2.set_xlabel('Breakpoint Support')
-    ax2.set_title('Lumpy')
+    ax2.set_title('(b)')
     ax2.axvline(median(sup[1]), linestyle='dashed',
                 color='k', linewidth=1)
 
     ax3.hist(sup[2], bins=bins_sz, ec='black')
     ax3.set_ylim([0, 200])
-    ax3.set_ylabel('Number of deletions')
+    ax3.set_ylabel('No. of deletions')
     ax3.set_xlabel('Breakpoint Support')
-    ax3.set_title('TIDDIT')
+    ax3.set_title('(c)')
     ax3.axvline(median(sup[2]), linestyle='dashed',
                 color='k', linewidth=1)
 
     ax4.hist(sup[3], bins=bins_sz, ec='black')
     ax4.set_ylim([0, 200])
-    ax4.set_ylabel('Number of deletions')
+    ax4.set_ylabel('No. of deletions')
     ax4.set_xlabel('Breakpoint Support')
-    ax4.set_title('SoftSV')
+    ax4.set_title('(d)')
     ax4.axvline(median(sup[3]), linestyle='dashed',
                 color='k', linewidth=1)
 
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
-    # fig.savefig('filename.eps', format='eps')
 
 
 def lenErrorPlot(le):
@@ -616,7 +616,7 @@ def lenErrorPlot(le):
     ax.boxplot(le)
     ax.set_xlabel('HyINDEL')
     ax.set_ylabel('Insertion Length error (bp)')
-    ax.set_ylim([-10, 100])
+    # ax.set_ylim([-10, 100])
 
 
 def sizeDistrPlot(f, delsFlag):
@@ -655,6 +655,8 @@ def cmp_common_ins2(f1, f2, ex):
         ok = False
         rem = False
         for j in range(len(f2)):
+            if f1[i].chr != f2[j].chr:
+                continue
             if abs(f1[i].pos - f2[j].pos) <= 10:
                 for k in range(len(ex)):
                     if abs(f1[i].pos - ex[k].pos) <= 10:
@@ -664,6 +666,7 @@ def cmp_common_ins2(f1, f2, ex):
                 break
         if ok and not rem:
             co += 1
+            # print(f1[i])
     print('Common:', co)
 
 
@@ -785,54 +788,54 @@ def tool_stats(dels_hyindel, ins_hyindel, pamir, popins):
 
 
 def simulations():
-    dels_ref = readSim('/Users/alok/IIIT/Simulations/Input/2.txt',
-                       '/Users/alok/IIIT/Simulations/Input/1.txt', True)
-    ins_ref = readSim('/Users/alok/IIIT/Simulations/Input/2.txt',
-                      '/Users/alok/IIIT/Simulations/Input/1.txt', False)
+    dels_ref = readSim('/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Input/2.txt',
+                       '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Input/1.txt', True)
+    ins_ref = readSim('/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Input/2.txt',
+                      '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Input/1.txt', False)
     # sim_stats(dels_ref, ins_ref)
 
     dels_hyindel_10x = readHyINDEL(
-        '/Users/alok/IIIT/Simulations/Output/10x/hyindel/output.vcf', delsFlag=True)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/10x/hyindel/output.vcf', delsFlag=True)
     ins_hyindel_10x = readHyINDEL(
-        '/Users/alok/IIIT/Simulations/Output/10x/hyindel/output.vcf', delsFlag=False)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/10x/hyindel/output.vcf', delsFlag=False)
     dels_hyindel_20x = readHyINDEL(
-        '/Users/alok/IIIT/Simulations/Output/20x/hyindel/output.vcf', delsFlag=True)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/20x/hyindel/output.vcf', delsFlag=True)
     ins_hyindel_20x = readHyINDEL(
-        '/Users/alok/IIIT/Simulations/Output/20x/hyindel/output.vcf', delsFlag=False)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/20x/hyindel/output.vcf', delsFlag=False)
     dels_hyindel_30x = readHyINDEL(
-        '/Users/alok/IIIT/Simulations/Output/30x/hyindel/output.vcf', delsFlag=True)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/hyindel/output.vcf', delsFlag=True)
     ins_hyindel_30x = readHyINDEL(
-        '/Users/alok/IIIT/Simulations/Output/30x/hyindel/output.vcf', delsFlag=False)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/hyindel/output.vcf', delsFlag=False)
     lumpy_10x = readLumpy(
-        '/Users/alok/IIIT/Simulations/Output/10x/lumpy/lumpy_sim_10x.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/10x/lumpy/lumpy_sim_10x.vcf')
     lumpy_20x = readLumpy(
-        '/Users/alok/IIIT/Simulations/Output/20x/lumpy/lumpy_sim_20x.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/20x/lumpy/lumpy_sim_20x.vcf')
     lumpy_30x = readLumpy(
-        '/Users/alok/IIIT/Simulations/Output/30x/lumpy/lumpy_sim_30x.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/lumpy/lumpy_sim_30x.vcf')
     tiddit_10x = readTiddit(
-        '/Users/alok/IIIT/Simulations/Output/10x/tiddit/tiddit_sim_10x.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/10x/tiddit/tiddit_sim_10x.vcf')
     tiddit_20x = readTiddit(
-        '/Users/alok/IIIT/Simulations/Output/20x/tiddit/tiddit_sim_20x.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/20x/tiddit/tiddit_sim_20x.vcf')
     tiddit_30x = readTiddit(
-        '/Users/alok/IIIT/Simulations/Output/30x/tiddit/tiddit_sim_30x.vcf')
-    softsv_10x = readSoftsv('/Users/alok/IIIT/Simulations/Output/10x/softsv/deletions_small.txt',
-                            '/Users/alok/IIIT/Simulations/Output/10x/softsv/deletions.txt')
-    softsv_20x = readSoftsv('/Users/alok/IIIT/Simulations/Output/20x/softsv/deletions_small.txt',
-                            '/Users/alok/IIIT/Simulations/Output/20x/softsv/deletions.txt')
-    softsv_30x = readSoftsv('/Users/alok/IIIT/Simulations/Output/30x/softsv/deletions_small.txt',
-                            '/Users/alok/IIIT/Simulations/Output/30x/softsv/deletions.txt')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/tiddit/tiddit_sim_30x.vcf')
+    softsv_10x = readSoftsv('/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/10x/softsv/deletions_small.txt',
+                            '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/10x/softsv/deletions.txt')
+    softsv_20x = readSoftsv('/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/20x/softsv/deletions_small.txt',
+                            '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/20x/softsv/deletions.txt')
+    softsv_30x = readSoftsv('/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/softsv/deletions_small.txt',
+                            '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/softsv/deletions.txt')
     pamir_10x = readPamir(
-        '/Users/alok/IIIT/Simulations/Output/10x/pamir_mrsfast_best/insertions_setcover.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/10x/pamir_mrsfast_best/insertions_setcover.vcf')
     pamir_20x = readPamir(
-        '/Users/alok/IIIT/Simulations/Output/20x/pamir_mrsfast_best/insertions_setcover.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/20x/pamir_mrsfast_best/insertions_setcover.vcf')
     pamir_30x = readPamir(
-        '/Users/alok/IIIT/Simulations/Output/30x/pamir_mrsfast_best/insertions_setcover.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/pamir_mrsfast_best/insertions_setcover.vcf')
     popins_10x = readPopins(
-        '/Users/alok/IIIT/Simulations/Output/10x/popins/insertions.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/10x/popins/insertions.vcf')
     popins_20x = readPopins(
-        '/Users/alok/IIIT/Simulations/Output/20x/popins/insertions.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/20x/popins/insertions.vcf')
     popins_30x = readPopins(
-        '/Users/alok/IIIT/Simulations/Output/30x/popins/insertions.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/popins/insertions.vcf')
 
     # Deletions
     _, _, _, _, f_hyindel_del_10x = compare(dels_hyindel_10x, dels_ref,
@@ -888,16 +891,14 @@ def simulations():
         #     f_tiddit_10x[0], f_tiddit_20x[0], f_tiddit_30x[0]], [f_softsv_10x[0], f_softsv_20x[0], f_softsv_30x[0]]], delsFlag=True)
         # fScorePlot([[f_hyindel_ins_10x[0], f_hyindel_ins_20x[0], f_hyindel_ins_30x[0]], [
         #            f_pamir_10x[0], f_pamir_20x[0], f_pamir_30x[0]], [f_popins_10x[0], f_popins_20x[0], f_popins_30x[0]]], delsFlag=False)
-        plt.show()
 
     # Plot breakpoint error
     if BREAKPOINT_PLOT:
         bpErrorPlot([b_hyindel_del, b_lumpy, b_tiddit, b_softsv],
-                    ['HyINDEL', 'Lumpy', 'TIDDIT', 'SoftSV'])
+                    ['(a)', '(b)', '(c)', '(d)'])
         bpErrorPlot([b_hyindel_ins, b_pamir, b_popins],
-                    ['HyINDEL', 'Pamir', 'Popins'])
+                    ['(a)', '(b)', '(c)'])
         lenErrorPlot(l_hyindel_ins)
-        plt.show()
 
     # Plot breakpoint support
     if SUPPORT_PLOT:
@@ -906,35 +907,37 @@ def simulations():
         print('Median breakpoint support (Tiddit):', median(s_tiddit))
         print('Median breakpoint support (Softsv):', median(s_softsv))
         supPlot([s_hyindel_del, s_lumpy, s_tiddit, s_softsv])
+
+    if FSCORE_PLOT or BREAKPOINT_PLOT or SUPPORT_PLOT:
         plt.show()
 
 
 def platinum():
     dels_ref_svclassify = readSvclassify(
-        '/Users/alok/IIIT/GS/Personalis_1000_Genomes_deduplicated_deletions.bed', True)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/Personalis_1000_Genomes_deduplicated_deletions.bed', True)
     ins_ref_svclassify = readSvclassify(
-        '/Users/alok/IIIT/GS/Spiral_Genetics_insertions.bed', False)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/Spiral_Genetics_insertions.bed', False)
     dels_ref_merged = readMergedBenchmark(
-        '/Users/alok/IIIT/GS/NA12878_DGV-2016_LR-assembly.vcf', True)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/NA12878_DGV-2016_LR-assembly.vcf', True)
     ins_ref_merged = readMergedBenchmark(
-        '/Users/alok/IIIT/GS/NA12878_DGV-2016_LR-assembly.vcf', False)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/NA12878_DGV-2016_LR-assembly.vcf', False)
     ins_ref_dgv_1kgp, ins_mob, ins = readDgvNovelIns(
-        '/Users/alok/IIIT/GS/GRCh37_hg19_variants_2016-05-15.txt')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/GRCh37_hg19_variants_2016-05-15.txt')
 
     dels_hyindel = readHyINDEL(
-        '/Users/alok/IIIT/Platinum/Output/HyINDEL/output.vcf', delsFlag=True)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/hyindel/output.vcf', delsFlag=True)
     ins_hyindel = readHyINDEL(
-        '/Users/alok/IIIT/Platinum/Output/HyINDEL/output.vcf', delsFlag=False)
+        '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/hyindel/output.vcf', delsFlag=False)
     lumpy = readLumpy(
-        '/Users/alok/IIIT/Platinum/Output/lumpy/NA12878_lumpy.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/lumpy/NA12878_lumpy.vcf')
     tiddit = readTiddit(
-        '/Users/alok/IIIT/Platinum/Output/tiddit/NA12878_tiddit.vcf')
-    softsv = readSoftsv('/Users/alok/IIIT/Platinum/Output/softsv/deletions_small.txt',
-                        '/Users/alok/IIIT/Platinum/Output/softsv/deletions.txt')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/tiddit/NA12878_tiddit.vcf')
+    softsv = readSoftsv('/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/softsv/deletions_small.txt',
+                        '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/softsv/deletions.txt')
     popins = readPopins(
-        '/Users/alok/IIIT/Platinum/Output/popins/popins_platinum_insertions.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/popins/popins_platinum_insertions.vcf')
     pamir = readPamir(
-        '/Users/alok/IIIT/Platinum/Output/pamir/platinum_pamir_insertions_setcover.vcf')
+        '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/pamir/platinum_pamir_insertions_setcover.vcf')
 
     # ref_stats(dels_ref_svclassify, ins_ref_svclassify, dels_ref_merged, ins_ref_merged, ins_ref_dgv_1kgp)
     # tool_stats(dels_hyindel, ins_hyindel, pamir, popins)
@@ -981,7 +984,6 @@ def platinum():
 def main():
     simulations()
     platinum()
-    return
 
 
 if __name__ == '__main__':
