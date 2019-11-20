@@ -1,7 +1,6 @@
 # pylint: disable=unused-variable
 
 from statistics import mean, median
-import numpy as np
 import matplotlib.pyplot as plt
 
 SPLIT_LARGE = 500
@@ -16,7 +15,7 @@ SUPPORT_PLOT = False
 # Plot size distributions (True)
 SIZE_DISTR_PLOT = False
 # Maximum error in breakpoint for insertions
-DIST_INS = 200
+DIST_INS = 10
 # Reciprocal overlap
 RO = 0.5
 
@@ -322,10 +321,12 @@ def readSvclassify(fName, delsFlag):
     return ret
 
 
-def readDgvNovelIns(fName):
+def readDgv(fName, delsFlag):
     ret = []
     ret_mob = []
     ret_ins = []
+    ret_loss = []
+    ret_dels = []
     with open(fName, 'r') as f:
         for line in f:
             l = line.split('\t')
@@ -333,15 +334,32 @@ def readDgvNovelIns(fName):
                 continue
             if 'NA12878' not in line:
                 continue
-            if l[6] != '1000_Genomes_Consortium_Pilot_Project':
-                continue
-            if l[5] == 'novel sequence insertion':
-                ret.append(Insertion(t_chr=l[1], t_pos=int(l[2])))
-            if l[5] == 'mobile element insertion':
-                ret_mob.append(Insertion(t_chr=l[1], t_pos=int(l[2])))
-            if l[5] == 'insertion':
-                ret_ins.append(Insertion(t_chr=l[1], t_pos=int(l[2])))
-    return ret, ret_mob, ret_ins
+            if delsFlag:
+                st = int(l[2])
+                en = int(l[3])
+                sz = en - st + 1
+                isSmall = False
+                if sz <= 500:
+                    isSmall = True
+                if l[5] == 'deletion':
+                    if l[6] == '1000_Genomes_Consortium_Phase_1':
+                        ret_dels.append(Deletion(t_chr=l[1], t_st=st, t_en=en, t_isSmall=isSmall))
+                if l[5] == 'loss':
+                    if l[6] == '1000_Genomes_Consortium_Phase_3':
+                        ret_loss.append(Deletion(t_chr=l[1], t_st=st, t_en=en, t_isSmall=isSmall))
+            else:
+                if l[6] != '1000_Genomes_Consortium_Pilot_Project':
+                    continue
+                if l[5] == 'novel sequence insertion':
+                    ret.append(Insertion(t_chr=l[1], t_pos=int(l[2])))
+                if l[5] == 'mobile element insertion':
+                    ret_mob.append(Insertion(t_chr=l[1], t_pos=int(l[2])))
+                if l[5] == 'insertion':
+                    ret_ins.append(Insertion(t_chr=l[1], t_pos=int(l[2])))
+    if delsFlag:
+        return ret_dels, ret_loss
+    else:
+        return ret, ret_mob, ret_ins
 
 
 def readMergedBenchmark(fName, delsFlag):
@@ -745,7 +763,7 @@ def real_stats(f, extra=False, delsFlag=False):
               mean(ar), 'Median:', median(ar))
 
 
-def ref_stats(dels_ref_svclassify, ins_ref_svclassify, dels_ref_merged, ins_ref_merged, ins_ref_dgv_1kgp):
+def ref_stats(dels_ref_svclassify, ins_ref_svclassify, dels_ref_merged, ins_ref_merged, ins_ref_dgv_1kgp, dels_ref_dgv_1kgp_loss):
     print('svclassify-dels')
     real_stats(dels_ref_svclassify)
     print('Total:', len(dels_ref_svclassify))
@@ -764,6 +782,10 @@ def ref_stats(dels_ref_svclassify, ins_ref_svclassify, dels_ref_merged, ins_ref_
     print('dgv-novelins')
     print('Total:', len(ins_ref_dgv_1kgp))
     print('-' * 27)
+    print('dgv-dels')
+    real_stats(dels_ref_dgv_1kgp_loss)
+    print('Total:', len(dels_ref_dgv_1kgp_loss))
+    print('-' * 27)
 
 
 def tool_stats(dels_hyindel, ins_hyindel, pamir, popins):
@@ -781,10 +803,14 @@ def tool_stats(dels_hyindel, ins_hyindel, pamir, popins):
     print('-' * 27)
 
     ex = cmp_common_ins3(ins_hyindel, pamir, popins)
+    print('-' * 27)
     ex = []  # do not exclude any
     cmp_common_ins2(ins_hyindel, pamir, ex)
+    print('-' * 27)
     cmp_common_ins2(ins_hyindel, popins, ex)
+    print('-' * 27)
     cmp_common_ins2(pamir, popins, ex)
+    print('-' * 27)
 
 
 def simulations():
@@ -921,8 +947,10 @@ def platinum():
         '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/NA12878_DGV-2016_LR-assembly.vcf', True)
     ins_ref_merged = readMergedBenchmark(
         '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/NA12878_DGV-2016_LR-assembly.vcf', False)
-    ins_ref_dgv_1kgp, ins_mob, ins = readDgvNovelIns(
-        '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/GRCh37_hg19_variants_2016-05-15.txt')
+    dels_ref_dgv_1kgp, dels_ref_dgv_1kgp_loss = readDgv(
+        '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/GRCh37_hg19_variants_2016-05-15.txt', True)
+    ins_ref_dgv_1kgp, ins_mob, ins = readDgv(
+        '/Volumes/GoogleDrive/My Drive/IIIT/Benchmarks/GRCh37_hg19_variants_2016-05-15.txt', False)
 
     dels_hyindel = readHyINDEL(
         '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/hyindel/output.vcf', delsFlag=True)
@@ -939,8 +967,29 @@ def platinum():
     pamir = readPamir(
         '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/pamir/platinum_pamir_insertions_setcover.vcf')
 
-    # ref_stats(dels_ref_svclassify, ins_ref_svclassify, dels_ref_merged, ins_ref_merged, ins_ref_dgv_1kgp)
-    # tool_stats(dels_hyindel, ins_hyindel, pamir, popins)
+    ref_stats(dels_ref_svclassify, ins_ref_svclassify, dels_ref_merged, ins_ref_merged, ins_ref_dgv_1kgp, dels_ref_dgv_1kgp_loss)
+    tool_stats(dels_hyindel, ins_hyindel, pamir, popins)
+
+    # Deletions dgv
+    compare(dels_hyindel, dels_ref_dgv_1kgp,
+            'PLATINUM-DELS-HYINDEL-DGV', True)
+    compare(lumpy, dels_ref_dgv_1kgp,
+            'PLATINUM-DELS-LUMPY-DGV', True)
+    compare(tiddit, dels_ref_dgv_1kgp,
+            'PLATINUM-DELS-TIDDIT-DGV', True)
+    compare(softsv, dels_ref_dgv_1kgp,
+            'PLATINUM-DELS-SOFTSV-DGV', True)
+
+    # Deletions dgv loss
+    compare(dels_hyindel, dels_ref_dgv_1kgp_loss,
+            'PLATINUM-DELS-HYINDEL-DGV-LOSS', True, checkSmall=True)
+    compare(lumpy, dels_ref_dgv_1kgp_loss,
+            'PLATINUM-DELS-LUMPY-DGV-LOSS', True, checkSmall=True)
+    compare(tiddit, dels_ref_dgv_1kgp_loss,
+            'PLATINUM-DELS-TIDDIT-DGV-LOSS', True, checkSmall=True)
+    compare(softsv, dels_ref_dgv_1kgp_loss,
+            'PLATINUM-DELS-SOFTSV-DGV-LOSS', True, checkSmall=True)
+
 
     # Deletions svclassify
     compare(dels_hyindel, dels_ref_svclassify,
