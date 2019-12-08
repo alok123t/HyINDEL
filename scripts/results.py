@@ -579,8 +579,9 @@ def fScorePlot(f, delsFlag):
 
 def bpErrorPlot(bpe, toolLabels):
     fig, ax = plt.subplots()
+    ax.set_ylim(ymin=-5, ymax=20)
     ax.boxplot(bpe)
-    ax.set_xticklabels(toolLabels)
+    ax.set_xticklabels(toolLabels, fontweight='bold')
     ax.set_ylabel('Breakpoint error (bp)')
 
 
@@ -597,16 +598,16 @@ def supPlot(sup):
     ax1.hist(sup[0], bins=bins_sz, ec='black')
     ax1.set_ylim([0, 200])
     ax1.set_ylabel('No. of deletions')
-    ax1.set_xlabel('Breakpoint Support')
-    ax1.set_title('(a)')
+    # ax1.set_xlabel('Breakpoint Support')
+    ax1.set_title('(a)', fontweight='bold', horizontalalignment='right', x=1)
     ax1.axvline(median(sup[0]), linestyle='dashed',
                 color='k', linewidth=1)
 
     ax2.hist(sup[1], bins=bins_sz, ec='black')
     ax2.set_ylim([0, 200])
-    ax2.set_ylabel('No. of deletions')
-    ax2.set_xlabel('Breakpoint Support')
-    ax2.set_title('(b)')
+    # ax2.set_ylabel('No. of deletions')
+    # ax2.set_xlabel('Breakpoint Support')
+    ax2.set_title('(b)', fontweight='bold', horizontalalignment='right', x=1)
     ax2.axvline(median(sup[1]), linestyle='dashed',
                 color='k', linewidth=1)
 
@@ -614,15 +615,15 @@ def supPlot(sup):
     ax3.set_ylim([0, 200])
     ax3.set_ylabel('No. of deletions')
     ax3.set_xlabel('Breakpoint Support')
-    ax3.set_title('(c)')
+    ax3.set_title('(c)', fontweight='bold', horizontalalignment='right', x=1)
     ax3.axvline(median(sup[2]), linestyle='dashed',
                 color='k', linewidth=1)
 
     ax4.hist(sup[3], bins=bins_sz, ec='black')
     ax4.set_ylim([0, 200])
-    ax4.set_ylabel('No. of deletions')
+    # ax4.set_ylabel('No. of deletions')
     ax4.set_xlabel('Breakpoint Support')
-    ax4.set_title('(d)')
+    ax4.set_title('(d)', fontweight='bold', horizontalalignment='right', x=1)
     ax4.axvline(median(sup[3]), linestyle='dashed',
                 color='k', linewidth=1)
 
@@ -1031,6 +1032,8 @@ def platinum():
 
 
 def main():
+    plt.rcParams['axes.labelweight'] = 'bold'
+
     simulations()
     platinum()
 
