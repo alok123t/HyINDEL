@@ -9,7 +9,7 @@ FLAG_50 = True
 # Plot fscore (True)
 FSCORE_PLOT = False
 # Plot breakpoint error plot (True)
-BREAKPOINT_PLOT = False
+BREAKPOINT_PLOT = True
 # Plot support (True)
 SUPPORT_PLOT = False
 # Plot size distributions (True)
@@ -21,7 +21,7 @@ RO = 0.5
 
 
 class Deletion:
-    def __init__(self, t_chr, t_st, t_en, t_iD=-1, t_pe=-1, t_sc=-1, t_sr=-1, t_isHomo="N/A", t_isSmall="N/A"):
+    def __init__(self, t_chr, t_st, t_en, t_iD=-1, t_pe=-1, t_sc=-1, t_sr=-1, t_isHomo="N/A", t_isSmall="N/A", t_isImprecise="N/A"):
         self.chr = modChr(t_chr)
         self.st = t_st
         self.en = t_en
@@ -31,13 +31,14 @@ class Deletion:
         self.sr = t_sr
         self.isHomo = t_isHomo
         self.isSmall = t_isSmall
+        self.isImprecise = t_isImprecise
 
     def __str__(self):
-        return self.chr+'\t' + str(self.st)+'\t' + str(self.en)
+        return self.chr+'\t' + str(self.st)+'\t' + str(self.en)+'\t' + str(self.isImprecise)
 
 
 class Insertion:
-    def __init__(self, t_chr, t_pos, t_seq='', t_seqLen=-1, t_refPos=-1, t_iD=-1, t_sc=-1, t_sup=-1, t_isHomo="N/A", t_isSmall="N/A"):
+    def __init__(self, t_chr, t_pos, t_seq='', t_seqLen=-1, t_refPos=-1, t_iD=-1, t_sc=-1, t_sup=-1, t_isHomo="N/A", t_isSmall="N/A", t_isImprecise="N/A"):
         self.chr = modChr(t_chr)
         self.pos = t_pos  # Position on reference
         self.seq = t_seq
@@ -48,12 +49,13 @@ class Insertion:
         self.sup = t_sup
         self.isHomo = t_isHomo
         self.isSmall = t_isSmall
+        self.isImprecise = t_isImprecise
 
     def __str__(self):
         if len(self.seq) == 0:
-            return self.chr + '\t' + str(self.pos)
+            return self.chr + '\t' + str(self.pos) + str(self.isImprecise)
         else:
-            return self.chr + '\t' + str(self.pos) + '\t' + str(len(self.seq))
+            return self.chr + '\t' + str(self.pos) + '\t' + str(len(self.seq)) + str(self.isImprecise)
 
 
 """
@@ -114,6 +116,9 @@ def readHyINDEL(fName, delsFlag):
             if line[0] == '#':
                 continue
             l = line.split()
+            isImprecise = False
+            if 'IMPRECISE' in line:
+                isImprecise = True
             if delsFlag:
                 if l[4] != '<DEL>':
                     continue
@@ -137,13 +142,14 @@ def readHyINDEL(fName, delsFlag):
                 isSmall = False
                 if sz <= 500:
                     isSmall = True
-                ret.append(Deletion(t_chr=l[0], t_st=st, t_en=en, t_pe=sup_pe,
-                                    t_sc=sup_sc, t_sr=sup_sr, t_isHomo=isHomo, t_isSmall=isSmall))
+                ret.append(Deletion(t_chr=l[0], t_st=st, t_en=en, t_pe=sup_pe, t_sc=sup_sc,
+                                    t_sr=sup_sr, t_isHomo=isHomo, t_isSmall=isSmall, t_isImprecise=isImprecise))
             else:
                 if l[4] != '<INS>':
                     continue
                 if 'IMPRECISE' in l[7] or 'SEQUP' in l[7] or 'SEQDOWN' in l[7]:
-                    ret.append(Insertion(t_chr=l[0], t_pos=int(l[1])))
+                    ret.append(Insertion(t_chr=l[0], t_pos=int(
+                        l[1]), t_isImprecise=isImprecise))
                 else:
                     info_col = l[7].split(';')
                     seq = info_col[2].split('=')[1]
@@ -152,7 +158,7 @@ def readHyINDEL(fName, delsFlag):
                     if seqLen <= 500:
                         isSmall = True
                     ret.append(Insertion(t_chr=l[0], t_pos=int(
-                        l[1]), t_seq=seq, t_seqLen=seqLen, t_isSmall=isSmall))
+                        l[1]), t_seq=seq, t_seqLen=seqLen, t_isSmall=isSmall, t_isImprecise=isImprecise))
 
     return ret
 
@@ -164,14 +170,17 @@ def readLumpy(fName):
             if line[0] == '#':
                 continue
             l = line.split()
+            isImprecise = False
+            if 'IMPRECISE' in line:
+                isImprecise = True
             if l[4] != '<DEL>':
                 continue
             info_col = l[7].split(';')
             format_col = l[9].split(':')
             sup_pe = int(format_col[2])
             sup_sr = int(format_col[3])
-            ret.append(Deletion(t_chr=l[0], t_st=int(l[1]), t_en=int(
-                info_col[3].split('=')[1]), t_pe=sup_pe, t_sr=sup_sr))
+            ret.append(Deletion(t_chr=l[0], t_st=int(l[1]), t_en=int(info_col[3].split(
+                '=')[1]), t_pe=sup_pe, t_sr=sup_sr, t_isImprecise=isImprecise))
 
     return ret
 
@@ -183,6 +192,9 @@ def readTiddit(fName):
             if line[0] == '#':
                 continue
             l = line.split()
+            isImprecise = False
+            if 'ORSR=0,0' in line:
+                isImprecise = True
             if l[4] != '<DEL>':
                 continue
             # if l[6] != 'PASS':
@@ -191,8 +203,12 @@ def readTiddit(fName):
             format_col = l[9].split(':')
             sup_pe = int(format_col[2])
             sup_sr = int(format_col[3])
+            quala = int(info_col[-2].split('=')[1])
+            qualb = int(info_col[-1].split('=')[1])
+            if quala <= 55 or qualb <= 55:
+                isImprecise = True
             ret.append(Deletion(t_chr=l[0], t_st=int(l[1]), t_en=int(
-                info_col[3].split('=')[1]), t_pe=sup_pe, t_sr=sup_sr))
+                info_col[3].split('=')[1]), t_pe=sup_pe, t_sr=sup_sr, t_isImprecise=isImprecise))
 
     return ret
 
@@ -205,14 +221,14 @@ def readSoftsv(fNameSmall, fNameLarge):
             if l[0] == 'Chromosome':
                 continue
             ret.append(Deletion(t_chr=l[0], t_st=int(l[1]), t_en=int(
-                l[2]), t_pe=int(l[4]), t_sc=int(l[5])))
+                l[2]), t_pe=int(l[4]), t_sc=int(l[5]), t_isImprecise=False))
 
         for line in fLarge:
             l = line.split()
             if l[0] == 'Chromosome':
                 continue
             ret.append(Deletion(t_chr=l[0], t_st=int(l[1]), t_en=int(
-                l[2]), t_pe=int(l[4]), t_sc=int(l[5])))
+                l[2]), t_pe=int(l[4]), t_sc=int(l[5]), t_isImprecise=False))
     return ret
 
 
@@ -237,7 +253,7 @@ def readPamir(fName):
         sup = int(info_col[4].split('=')[1])
         seq = info_col[5].split('=')[1]
         ret.append(Insertion(t_chr=l[0], t_pos=int(
-            l[1]), t_seq=seq, t_sup=sup))
+            l[1]), t_seq=seq, t_sup=sup, t_isImprecise=False))
 
     return ret
 
@@ -258,7 +274,8 @@ def readPopins(fName):
                     break
             if f:
                 continue
-            ret.append(Insertion(t_chr=l[0], t_pos=int(l[1])))
+            ret.append(Insertion(t_chr=l[0], t_pos=int(
+                l[1]), t_isImprecise=False))
 
     return ret
 
@@ -343,10 +360,12 @@ def readDgv(fName, delsFlag):
                     isSmall = True
                 if l[5] == 'deletion':
                     if l[6] == '1000_Genomes_Consortium_Phase_1':
-                        ret_dels.append(Deletion(t_chr=l[1], t_st=st, t_en=en, t_isSmall=isSmall))
+                        ret_dels.append(
+                            Deletion(t_chr=l[1], t_st=st, t_en=en, t_isSmall=isSmall))
                 if l[5] == 'loss':
                     if l[6] == '1000_Genomes_Consortium_Phase_3':
-                        ret_loss.append(Deletion(t_chr=l[1], t_st=st, t_en=en, t_isSmall=isSmall))
+                        ret_loss.append(
+                            Deletion(t_chr=l[1], t_st=st, t_en=en, t_isSmall=isSmall))
             else:
                 if l[6] != '1000_Genomes_Consortium_Pilot_Project':
                     continue
@@ -429,15 +448,19 @@ def compare(toolUnfiltered, ref, toolName, delsFlag, checkHomoAndSmall=False, ch
             if delsFlag:
                 if checkDel(tool[i], ref[j]):
                     found[i] = j
-                    dis.append(abs(tool[i].en - ref[j].en) +
-                               abs(tool[i].st - ref[j].st))
+                    if tool[i].isImprecise == False:
+                        dis.append(abs(tool[i].en - ref[j].en) +
+                                   abs(tool[i].st - ref[j].st))
+                        if dis[-1] >= 20:
+                            print(tool[i], ref[j])
                     exact_sup = tool[i].sc + tool[i].sr
                     if exact_sup > 0:
                         sup.append(exact_sup)
             else:
                 if checkIns(tool[i], ref[j]):
                     found[i] = j
-                    dis.append(abs(tool[i].pos - ref[j].pos))
+                    if tool[i].isImprecise == False:
+                        dis.append(abs(tool[i].pos - ref[j].pos))
                     if tool[i].seqLen != -1:
                         le.append(ref[j].seqLen - tool[i].seqLen)
 
@@ -579,7 +602,7 @@ def fScorePlot(f, delsFlag):
 
 def bpErrorPlot(bpe, toolLabels):
     fig, ax = plt.subplots()
-    ax.set_ylim(ymin=-5, ymax=20)
+    ax.set_ylim(ymin=-2, ymax=15)
     ax.boxplot(bpe)
     ax.set_xticklabels(toolLabels, fontweight='bold')
     ax.set_ylabel('Breakpoint error (bp)')
@@ -598,16 +621,13 @@ def supPlot(sup):
     ax1.hist(sup[0], bins=bins_sz, ec='black')
     ax1.set_ylim([0, 200])
     ax1.set_ylabel('No. of deletions')
-    # ax1.set_xlabel('Breakpoint Support')
-    ax1.set_title('(a)', fontweight='bold', horizontalalignment='right', x=1)
+    ax1.set_title('(a)', fontweight='bold', position=(0.9, 0.8))
     ax1.axvline(median(sup[0]), linestyle='dashed',
                 color='k', linewidth=1)
 
     ax2.hist(sup[1], bins=bins_sz, ec='black')
     ax2.set_ylim([0, 200])
-    # ax2.set_ylabel('No. of deletions')
-    # ax2.set_xlabel('Breakpoint Support')
-    ax2.set_title('(b)', fontweight='bold', horizontalalignment='right', x=1)
+    ax2.set_title('(b)', fontweight='bold', position=(0.9, 0.8))
     ax2.axvline(median(sup[1]), linestyle='dashed',
                 color='k', linewidth=1)
 
@@ -615,15 +635,14 @@ def supPlot(sup):
     ax3.set_ylim([0, 200])
     ax3.set_ylabel('No. of deletions')
     ax3.set_xlabel('Breakpoint Support')
-    ax3.set_title('(c)', fontweight='bold', horizontalalignment='right', x=1)
+    ax3.set_title('(c)', fontweight='bold', position=(0.9, 0.8))
     ax3.axvline(median(sup[2]), linestyle='dashed',
                 color='k', linewidth=1)
 
     ax4.hist(sup[3], bins=bins_sz, ec='black')
     ax4.set_ylim([0, 200])
-    # ax4.set_ylabel('No. of deletions')
     ax4.set_xlabel('Breakpoint Support')
-    ax4.set_title('(d)', fontweight='bold', horizontalalignment='right', x=1)
+    ax4.set_title('(d)', fontweight='bold', position=(0.9, 0.8))
     ax4.axvline(median(sup[3]), linestyle='dashed',
                 color='k', linewidth=1)
 
@@ -925,7 +944,7 @@ def simulations():
                     ['(a)', '(b)', '(c)', '(d)'])
         bpErrorPlot([b_hyindel_ins, b_pamir, b_popins],
                     ['(a)', '(b)', '(c)'])
-        lenErrorPlot(l_hyindel_ins)
+        # lenErrorPlot(l_hyindel_ins)
 
     # Plot breakpoint support
     if SUPPORT_PLOT:
@@ -968,7 +987,8 @@ def platinum():
     pamir = readPamir(
         '/Volumes/GoogleDrive/My Drive/IIIT/Platinum/Output/pamir/platinum_pamir_insertions_setcover.vcf')
 
-    ref_stats(dels_ref_svclassify, ins_ref_svclassify, dels_ref_merged, ins_ref_merged, ins_ref_dgv_1kgp, dels_ref_dgv_1kgp_loss)
+    ref_stats(dels_ref_svclassify, ins_ref_svclassify, dels_ref_merged,
+              ins_ref_merged, ins_ref_dgv_1kgp, dels_ref_dgv_1kgp_loss)
     tool_stats(dels_hyindel, ins_hyindel, pamir, popins)
 
     # Deletions dgv
@@ -990,7 +1010,6 @@ def platinum():
             'PLATINUM-DELS-TIDDIT-DGV-LOSS', True, checkSmall=True)
     compare(softsv, dels_ref_dgv_1kgp_loss,
             'PLATINUM-DELS-SOFTSV-DGV-LOSS', True, checkSmall=True)
-
 
     # Deletions svclassify
     compare(dels_hyindel, dels_ref_svclassify,
@@ -1035,7 +1054,7 @@ def main():
     plt.rcParams['axes.labelweight'] = 'bold'
 
     simulations()
-    platinum()
+    # platinum()
 
 
 if __name__ == '__main__':
