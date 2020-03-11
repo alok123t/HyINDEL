@@ -11,7 +11,7 @@ FSCORE_PLOT = False
 # Plot breakpoint error plot (True)
 BREAKPOINT_PLOT = True
 # Plot support (True)
-SUPPORT_PLOT = False
+SUPPORT_PLOT = True
 # Plot size distributions (True)
 SIZE_DISTR_PLOT = False
 # Maximum error in breakpoint for insertions
@@ -601,52 +601,42 @@ def fScorePlot(f, delsFlag):
 
 
 def bpErrorPlot(bpe, toolLabels):
+    plt.rcParams['font.weight'] = 'bold'
+    plt.rcParams['font.size'] = 14
     fig, ax = plt.subplots()
-    ax.set_ylim(ymin=-2, ymax=15)
+    # Deletions
+    if len(bpe) == 4:
+        ax.set_title('(a)', fontweight='bold', position=(0.9, 0.9))
+        ax.set_ylim(ymin=-2, ymax=12)
+    # Insertions
+    elif len(bpe) == 3:
+        ax.set_title('(b)', fontweight='bold', position=(0.9, 0.9))
+        ax.set_ylim(ymin=-2, ymax=10)
     ax.boxplot(bpe)
     ax.set_xticklabels(toolLabels, fontweight='bold')
-    ax.set_ylabel('Breakpoint error (bp)')
+    ax.set_ylabel('Breakpoint error (bp)', fontweight='bold')
 
 
-def supPlot(sup):
-    fig = plt.figure()
+def supPlot(sup, toolLabels):
+    plt.rcParams['font.weight'] = 'bold'
+    plt.rcParams['font.size'] = 12
+    fig, ax = plt.subplots(
+        1, 4, sharey=True, figsize=(8, 4))
+    fig.text(0.5, 0.04, 'Breakpoint support', ha='center')
 
-    ax1 = fig.add_subplot(2, 2, 1)
-    ax2 = fig.add_subplot(2, 2, 2)
-    ax3 = fig.add_subplot(2, 2, 3)
-    ax4 = fig.add_subplot(2, 2, 4)
+    bins_sz = [2 * x for x in range(25)]
 
-    bins_sz = [2*x for x in range(25)]
+    for i in range(4):
+        if i == 0:
+            ax[i].set_ylabel('Number of deletions')
+        ax[i].hist(sup[i], bins=bins_sz, ec='black')
+        ax[i].set_ylim([0, 200])
+        ax[i].set_title(toolLabels[i], fontweight='bold', position=(0.8, 0.85))
+        ax[i].axvline(median(sup[i]), linestyle='dashed',
+                      color='k', linewidth=1)
 
-    ax1.hist(sup[0], bins=bins_sz, ec='black')
-    ax1.set_ylim([0, 200])
-    ax1.set_ylabel('No. of deletions')
-    ax1.set_title('(a)', fontweight='bold', position=(0.9, 0.8))
-    ax1.axvline(median(sup[0]), linestyle='dashed',
-                color='k', linewidth=1)
-
-    ax2.hist(sup[1], bins=bins_sz, ec='black')
-    ax2.set_ylim([0, 200])
-    ax2.set_title('(b)', fontweight='bold', position=(0.9, 0.8))
-    ax2.axvline(median(sup[1]), linestyle='dashed',
-                color='k', linewidth=1)
-
-    ax3.hist(sup[2], bins=bins_sz, ec='black')
-    ax3.set_ylim([0, 200])
-    ax3.set_ylabel('No. of deletions')
-    ax3.set_xlabel('Breakpoint Support')
-    ax3.set_title('(c)', fontweight='bold', position=(0.9, 0.8))
-    ax3.axvline(median(sup[2]), linestyle='dashed',
-                color='k', linewidth=1)
-
-    ax4.hist(sup[3], bins=bins_sz, ec='black')
-    ax4.set_ylim([0, 200])
-    ax4.set_xlabel('Breakpoint Support')
-    ax4.set_title('(d)', fontweight='bold', position=(0.9, 0.8))
-    ax4.axvline(median(sup[3]), linestyle='dashed',
-                color='k', linewidth=1)
-
-    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.tight_layout()
+    plt.subplots_adjust(left=0.10, bottom=0.14, right=0.98)
 
 
 def lenErrorPlot(le):
@@ -884,55 +874,57 @@ def simulations():
         '/Volumes/GoogleDrive/My Drive/IIIT/Simulations/Output/30x/popins/insertions.vcf')
 
     # Deletions
-    _, _, _, _, f_hyindel_del_10x = compare(dels_hyindel_10x, dels_ref,
-                                            'SIM-DELS-HYINDEL-10x', True, checkHomoAndSmall=True)
-    _, _, _, _, f_hyindel_del_20x = compare(dels_hyindel_20x, dels_ref,
-                                            'SIM-DELS-HYINDEL-20x', True, checkHomoAndSmall=True)
-    b_hyindel_del, f, s_hyindel_del, l, f_hyindel_del_30x = compare(dels_hyindel_30x, dels_ref,
-                                                                    'SIM-DELS-HYINDEL-30x', True, checkHomoAndSmall=True)
-    _, _, _, _, f_lumpy_10x = compare(
+    out_dels_hyindel_10x = compare(dels_hyindel_10x, dels_ref,
+                                   'SIM-DELS-HYINDEL-10x', True, checkHomoAndSmall=True)
+    out_dels_hyindel_20x = compare(dels_hyindel_20x, dels_ref,
+                                   'SIM-DELS-HYINDEL-20x', True, checkHomoAndSmall=True)
+    out_dels_hyindel_30x = compare(dels_hyindel_30x, dels_ref,
+                                   'SIM-DELS-HYINDEL-30x', True, checkHomoAndSmall=True)
+    out_dels_lumpy_10x = compare(
         lumpy_10x, dels_ref, 'SIM-DELS-LUMPY-10x', True)
-    _, _, _, _, f_lumpy_20x = compare(
+    out_dels_lumpy_20x = compare(
         lumpy_20x, dels_ref, 'SIM-DELS-LUMPY-20x', True)
-    b_lumpy, f, s_lumpy, l, f_lumpy_30x = compare(
+    out_dels_lumpy_30x = compare(
         lumpy_30x, dels_ref, 'SIM-DELS-LUMPY-30x', True)
-    _, _, _, _, f_tiddit_10x = compare(
+    out_dels_tiddit_10x = compare(
         tiddit_10x, dels_ref, 'SIM-DELS-TIDDIT-10x', True)
-    _, _, _, _, f_tiddit_20x = compare(
+    out_dels_tiddit_20x = compare(
         tiddit_20x, dels_ref, 'SIM-DELS-TIDDIT-20x', True)
-    b_tiddit, f, s_tiddit, l, f_tiddit_30x = compare(
+    out_dels_tiddit_30x = compare(
         tiddit_30x, dels_ref, 'SIM-DELS-TIDDIT-30x', True)
-    _, _, _, _, f_softsv_10x = compare(
+    out_dels_softsv_10x = compare(
         softsv_10x, dels_ref, 'SIM-DELS-SOFTSV-10x', True)
-    _, _, _, _, f_softsv_20x = compare(
+    out_dels_softsv_20x = compare(
         softsv_20x, dels_ref, 'SIM-DELS-SOFTSV-20x', True)
-    b_softsv, f, s_softsv, l, f_softsv_30x = compare(
+    out_dels_softsv_30x = compare(
         softsv_30x, dels_ref, 'SIM-DELS-SOFTSV-30x', True)
 
     # Insertions
-    _, _, _, _, f_hyindel_ins_10x = compare(ins_hyindel_10x, ins_ref,
-                                            'SIM-INS-HYINDEL-10x', False, checkHomoAndSmall=True)
-    _, _, _, _, f_hyindel_ins_20x = compare(ins_hyindel_20x, ins_ref,
-                                            'SIM-INS-HYINDEL-20x', False, checkHomoAndSmall=True)
-    b_hyindel_ins, f, s, l_hyindel_ins, f_hyindel_ins_30x = compare(ins_hyindel_30x, ins_ref,
-                                                                    'SIM-INS-HYINDEL-30x', False, checkHomoAndSmall=True)
-    _, _, _, _, f_pamir_10x = compare(
+    out_ins_hyindel_10x = compare(ins_hyindel_10x, ins_ref,
+                                  'SIM-INS-HYINDEL-10x', False, checkHomoAndSmall=True)
+    out_ins_hyindel_20x = compare(ins_hyindel_20x, ins_ref,
+                                  'SIM-INS-HYINDEL-20x', False, checkHomoAndSmall=True)
+    out_ins_hyindel_30x = compare(ins_hyindel_30x, ins_ref,
+                                  'SIM-INS-HYINDEL-30x', False, checkHomoAndSmall=True)
+    out_ins_pamir_10x = compare(
         pamir_10x, ins_ref, 'SIM-INS-PAMIR-10x', False)
-    _, _, _, _, f_pamir_20x = compare(
+    out_ins_pamir_20x = compare(
         pamir_20x, ins_ref, 'SIM-INS-PAMIR-20x', False)
-    b_pamir, f, s, l, f_pamir_30x = compare(
+    out_ins_pamir_30x = compare(
         pamir_30x, ins_ref, 'SIM-INS-PAMIR-30x', False)
-    _, _, _, _, f_popins_10x = compare(
+    out_ins_popins_10x = compare(
         popins_10x, ins_ref, 'SIM-INS-POPINS-10x', False)
-    _, _, _, _, f_popins_20x = compare(
+    out_ins_popins_20x = compare(
         popins_20x, ins_ref, 'SIM-INS-POPINS-20x', False)
-    b_popins, f, s, l, f_popins_30x = compare(
+    out_ins_popins_30x = compare(
         popins_30x, ins_ref, 'SIM-INS-POPINS-30x', False)
 
     # Plot fscore
     if FSCORE_PLOT:
-        recallPlot([f_hyindel_del_10x, f_hyindel_del_20x, f_hyindel_del_30x])
-        recallPlot([f_hyindel_ins_10x, f_hyindel_ins_20x, f_hyindel_ins_30x])
+        recallPlot([out_dels_hyindel_10x[4],
+                    out_dels_hyindel_20x[4], out_dels_hyindel_30x[4]])
+        recallPlot([out_ins_hyindel_10x[4],
+                    out_ins_hyindel_20x[4], out_ins_hyindel_30x[4]])
         # fScorePlot([[f_hyindel_del_10x[0], f_hyindel_del_20x[0], f_hyindel_del_30x[0]], [f_lumpy_10x[0], f_lumpy_20x[0], f_lumpy_30x[0]], [
         #     f_tiddit_10x[0], f_tiddit_20x[0], f_tiddit_30x[0]], [f_softsv_10x[0], f_softsv_20x[0], f_softsv_30x[0]]], delsFlag=True)
         # fScorePlot([[f_hyindel_ins_10x[0], f_hyindel_ins_20x[0], f_hyindel_ins_30x[0]], [
@@ -940,19 +932,24 @@ def simulations():
 
     # Plot breakpoint error
     if BREAKPOINT_PLOT:
-        bpErrorPlot([b_hyindel_del, b_lumpy, b_tiddit, b_softsv],
-                    ['(a)', '(b)', '(c)', '(d)'])
-        bpErrorPlot([b_hyindel_ins, b_pamir, b_popins],
-                    ['(a)', '(b)', '(c)'])
+        bpErrorPlot([out_dels_hyindel_30x[0], out_dels_lumpy_30x[0], out_dels_tiddit_30x[0], out_dels_softsv_30x[0]],
+                    ['(i)', '(ii)', '(iii)', '(iv)'])
+        bpErrorPlot([out_ins_hyindel_30x[0], out_ins_pamir_30x[0], out_ins_popins_30x[0]],
+                    ['(i)', '(ii)', '(iii)'])
         # lenErrorPlot(l_hyindel_ins)
 
     # Plot breakpoint support
     if SUPPORT_PLOT:
-        print('Median breakpoint support (HyINDEL):', median(s_hyindel_del))
-        print('Median breakpoint support (Lumpy):', median(s_lumpy))
-        print('Median breakpoint support (Tiddit):', median(s_tiddit))
-        print('Median breakpoint support (Softsv):', median(s_softsv))
-        supPlot([s_hyindel_del, s_lumpy, s_tiddit, s_softsv])
+        print('Median breakpoint support (HyINDEL):',
+              median(out_dels_hyindel_30x[2]))
+        print('Median breakpoint support (Lumpy):',
+              median(out_dels_lumpy_30x[2]))
+        print('Median breakpoint support (Tiddit):',
+              median(out_dels_tiddit_30x[2]))
+        print('Median breakpoint support (Softsv):',
+              median(out_dels_softsv_30x[2]))
+        supPlot([out_dels_hyindel_30x[2], out_dels_lumpy_30x[2], out_dels_tiddit_30x[2], out_dels_softsv_30x[2]],
+                ['(i)', '(ii)', '(iii)', '(iv)'])
 
     if FSCORE_PLOT or BREAKPOINT_PLOT or SUPPORT_PLOT:
         plt.show()
@@ -1054,7 +1051,7 @@ def main():
     plt.rcParams['axes.labelweight'] = 'bold'
 
     simulations()
-    # platinum()
+    platinum()
 
 
 if __name__ == '__main__':
